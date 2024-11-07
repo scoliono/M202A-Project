@@ -2,3 +2,6 @@ baseURL = 'https://scoliono.github.io/M202A-Project/'
 languageCode = 'en-us'
 title = 'Ad-Hoc File Sharing'
 theme = 'hugo-book'
+
+[params]
+  BookSection = '*'
