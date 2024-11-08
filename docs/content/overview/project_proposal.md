@@ -8,7 +8,7 @@ weight: 1
 
 ## 1. Motivation & Objective
 
-We want to create peer-to-peer ad-hoc file sharing software that multiple clients can use at once to deliver file updates to each other on the go, all without an internet connection.
+We want to create peer-to-peer local ad-hoc file sharing software similar to bit torrent that multiple clients can use at once to deliver file updates to each other on the go, all without an internet connection.
 
 ## 2. State of the Art & Its Limitations
 
@@ -38,11 +38,11 @@ As for real-world security risks, there is a possibility of a peer "poisoning" t
 
 ## 6. Requirements for Success
 
-Knowledge of the Bluetooth LE and Wi-Fi Direct protocols is necessary. The code will be written in Python, so knowledge of that language is assumed. In terms of hardware, the code should be able to run on any device supporting the aforementioned wireless protocols, but we are using a couple of Raspberry Pi Zero 2 Ws because they are cheap. Power banks are also necessary in order to do real-world on-the-go testing.
+Knowledge of the Bluetooth LE and Wi-Fi Direct protocols is necessary. The code will be written in Python, so knowledge of that language is assumed. In terms of hardware, the code should be able to run on any device supporting the aforementioned wireless protocols, but we are using 3 of Raspberry Pi Zero 2 Ws because they are cheap. Power banks are also necessary in order to do real-world on-the-go testing.
 
 ## 7. Metrics of Success
 
-Several metrics of success that we would consider include: average file transfer speed, maximum number of connectable peers, power consumption when idle (not yet connected to a peer), power consumption while a file transfer is in progress, and maximum range from which a file can be successfully transferred between peers. Ideally, all of the metrics will be high except power consumption, which should be just a couple hundred milliwatts because we are using low-power devices with the Bluetooth Low Energy protocol.
+Several metrics of success that we would consider include: average file transfer speed, file trasnfer speed to flood a network, maximum number of connectable peers, power consumption when idle (not yet connected to a peer), power consumption while a file transfer is in progress, and maximum range from which a file can be successfully transferred between peers. Ideally, all of the metrics will be high except power consumption, which should be just a couple hundred milliwatts because we are using low-power devices with the Bluetooth Low Energy protocol.
 
 ## 8. Execution Plan
 
@@ -51,7 +51,15 @@ Describe the key tasks in executing your project, and in case of team project de
 
 For the midterm presentation, our goal is to just get two devices to advertise file chunk metadata to each other and initiate a Wi-Fi Direct connection.
 
-...
+The main execution steps are as follows:
+
+1. Test BLE connection between 2 Raspberry Pis
+2. test Wifi Direct between 2 Raspberry Pis
+3. Develop a protocol for advertising which files, chunks, and versions a device has over BLE.
+4. Implement that protocol
+5. Implement the Wifi Direct handshake and file trasnfer of chunks.
+6. Test the full system.
+
 
 ## 9. Related Work
 
@@ -67,6 +75,10 @@ List datasets that you have identified and plan to use. Provide references (with
 
 List softwate that you have identified and plan to use. Provide references (with full citation in the References section below).
 
+1. bleak: Scanning & Connecting [4]
+2. BlueZ’s D-Bus API: BLE Advertising [5]
+3. Wifi Direct [6]
+
 ## 10. References
 
 List references correspondign to citations in your text above. For papers please include full citation and URL. For datasets and software include name and URL.
@@ -76,3 +88,9 @@ List references correspondign to citations in your text above. For papers please
 [2] https://learn.microsoft.com/en-us/windows/deployment/do/waas-delivery-optimization
 
 [3] https://www.xda-developers.com/airdrop/
+
+[4] https://github.com/hbldh/bleak
+
+[5] https://www.bluez.org/
+
+[6] https://www.wi-fi.org/discover-wi-fi/wi-fi-direct
