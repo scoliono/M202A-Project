@@ -28,7 +28,7 @@ Speaking more broadly, though, our project would make technology more accessible
 
 ## 5. Challenges
 
-Due to the wireless nature of this project, real-world tests could be negatively impacted by interference from other devices within range, especially in densely populated areas.
+Due to the wireless nature of this project, real-world tests could be negatively impacted by interference from other devices within range, especially in densely populated areas. If needed, we can simulate a worst-case connection loss scenario by physically unplugging select devices from power while they are in use.
 
 One challenge that we anticipate is the differences in penetration between a 2.4GHz Bluetooth signal and a 5GHz Wi-Fi signal. This could lead to a situation where two clients are able to advertise their metadata to each other, but then can't initiate the actual file transfer. This issue might be prevented by temporarily blacklisting peers which might be detectable over Bluetooth but fail to connect over Wi-Fi.
 
@@ -38,7 +38,7 @@ As for real-world security risks, there is a possibility of a peer "poisoning" t
 
 ## 6. Requirements for Success
 
-Knowledge of the Bluetooth LE and Wi-Fi Direct protocols is necessary. The code will be written in Python, so knowledge of that language is assumed. In terms of hardware, the code should be able to run on any device supporting the aforementioned wireless protocols, but we are using 3 of Raspberry Pi Zero 2 Ws because they are cheap. Power banks are also necessary in order to do real-world on-the-go testing.
+Knowledge of the Bluetooth LE and Wi-Fi Direct protocols is necessary. The code will be written in Python, so knowledge of that language is assumed. In terms of hardware, the code should be able to run on any device supporting the aforementioned wireless protocols, but we are using three Raspberry Pi Zero 2 Ws because they are cheap. Power banks are also necessary in order to do real-world on-the-go testing.
 
 ## 7. Metrics of Success
 
