@@ -87,21 +87,19 @@ We plan to use the following libraries in our code:
 
 ## 10. References
 
-List references correspondign to citations in your text above. For papers please include full citation and URL. For datasets and software include name and URL.
-
 [1] https://en.wikibooks.org/wiki/The_World_of_Peer-to-Peer_(P2P)/Networks_and_Protocols/BitTorrent
 
 [2] https://learn.microsoft.com/en-us/windows/deployment/do/waas-delivery-optimization
 
 [3] https://www.xda-developers.com/airdrop/
 
-[4] https://github.com/hbldh/bleak
+[4] bleak. URL: https://github.com/hbldh/bleak
 
-[5] https://www.bluez.org/
+[5] BlueZ. URL: https://www.bluez.org/
 
-[6] https://www.wi-fi.org/discover-wi-fi/wi-fi-direct
+[6] Wi-Fi Direct. URL: https://www.wi-fi.org/discover-wi-fi/wi-fi-direct
 
-[7] https://peach.blender.org/about/
+[7] Big Buck Bunny short film. URL: https://peach.blender.org/about/
 
 [8] O. Bilgen and A. B. Wagner, "A new stable peer-to-peer protocol with non-persistent peers," IEEE INFOCOM 2017 - IEEE Conference on Computer Communications, Atlanta, GA, USA, 2017, pp. 1-9, doi: 10.1109/INFOCOM.2017.8057141. keywords: {Protocols;Stability analysis;Peer-to-peer computing;Wireless communication;Conferences;Mobile communication;Servers}. URL: https://ieeexplore.ieee.org/document/8057141.
 
