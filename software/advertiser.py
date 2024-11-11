@@ -37,7 +37,7 @@ class FileSharingService(Service):
     @file_request.setter
     def file_request(self, value, options):
         # Use client-specific identifier from options
-        client_id = options["device"]
+        client_id = options.device
 
         # Decode the file name from the client's write request
         requested_file = value.decode("utf-8")
