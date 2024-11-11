@@ -3,6 +3,9 @@ from dbus_next.aio import MessageBus
 from dbus_next.service import ServiceInterface, method
 from bleak import BleakScanner, BleakClient
 
+import config
+
+
 # BLE Advertising Code
 class BLEAdvertisement(ServiceInterface):
     def __init__(self, bus):
@@ -25,7 +28,7 @@ async def advertise():
     advertisement_params = {
         'Type': 'peripheral',
         'ServiceUUIDs': ['12345678-1234-5678-1234-56789abcdef0'],
-        'LocalName': 'rpi1',
+        'LocalName': config.LOCAL_DEVICE_NAME,
     }
 
     await adapter_interface.call_register_advertisement(advertisement_path, advertisement_params)
@@ -38,7 +41,7 @@ async def advertise():
         print("Advertisement unregistered")
 
 # BLE Scanning and Connecting Code
-TARGET_DEVICE_NAME = "rpi3"
+TARGET_DEVICE_NAME = config.TARGET_DEVICE_NAME
 
 async def scan_and_connect():
     while True:
