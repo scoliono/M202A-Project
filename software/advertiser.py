@@ -2,6 +2,7 @@ import uuid  # For generating valid UUIDs
 import asyncio
 import json
 import socket  # To get the hostname
+import netifaces  # For getting MAC address
 from bluez_peripheral.gatt.service import Service, ServiceCollection
 from bluez_peripheral.gatt.characteristic import characteristic, CharacteristicFlags as CharFlags
 from bluez_peripheral.advert import Advertisement
@@ -15,18 +16,33 @@ FILES = {
 }
 
 
+def get_wifi_mac_address():
+    """Retrieve the MAC address of the Wi-Fi interface."""
+    for iface in netifaces.interfaces():
+        if iface.startswith("wlan"):  # Adjust based on your Wi-Fi interface name
+            addr_info = netifaces.ifaddresses(iface)
+            if netifaces.AF_LINK in addr_info:
+                return addr_info[netifaces.AF_LINK][0]["addr"]
+    return "00:00:00:00:00:00"  # Default if no Wi-Fi interface is found
+
+
 # Define the BLE service
 class FileSharingService(Service):
     def __init__(self, uuid):
         super().__init__(uuid, True)  # Custom service UUID
         self.files = FILES  # File metadata
         self.client_requests = {}  # Map of client identifiers to requested files
+        self.mac_address = get_wifi_mac_address()  # Retrieve Wi-Fi MAC address
 
     # Read-only characteristic to advertise the list of files
     @characteristic("BEF0", CharFlags.READ)
     def file_list(self, options):
-        # Send the file list as a JSON string
-        return bytes(json.dumps({k: {"version": v["version"], "chunks": v["chunks"]} for k, v in self.files.items()}), "utf-8")
+        # Add the MAC address to the file list
+        file_list_with_mac = {
+            "mac_address": self.mac_address,  # Include the MAC address
+            "files": {k: {"version": v["version"], "chunks": v["chunks"]} for k, v in self.files.items()},
+        }
+        return bytes(json.dumps(file_list_with_mac), "utf-8")
 
     # Write-only characteristic to request chunk availability for a file
     @characteristic("BEF1", CharFlags.WRITE)
