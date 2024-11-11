@@ -37,7 +37,6 @@ class FileSharingService(Service):
     @file_request.setter
     def file_request(self, value, options):
         # Use client-specific identifier from options
-        print(dir(options))
         client_id = options.device
 
         # Decode the file name from the client's write request
@@ -49,7 +48,7 @@ class FileSharingService(Service):
     @characteristic("BEF2", CharFlags.READ)
     def chunk_availability(self, options):
         # Use client-specific identifier from options
-        client_id = options["device"]
+        client_id = options.device
 
         # Check if this client has made a request
         if client_id in self.client_requests:
