@@ -2,5 +2,9 @@ bleak==0.22.3
 bluez-peripheral==0.1.7
 dbus-fast==2.24.3
 dbus-next==0.2.3
+hostp2pd==0.1.7
+lockfile==0.12.2
 netifaces==0.11.0
+python-daemon==3.1.0
+PyYAML==6.0.2
 typing_extensions==4.12.2
