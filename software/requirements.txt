@@ -2,4 +2,5 @@ bleak==0.22.3
 bluez-peripheral==0.1.7
 dbus-fast==2.24.3
 dbus-next==0.2.3
+netifaces==0.11.0
 typing_extensions==4.12.2
