@@ -1,3 +1,4 @@
+import uuid  # For generating valid UUIDs
 import asyncio
 import json
 import socket  # To get the hostname
@@ -68,8 +69,8 @@ async def main():
     # Retrieve the hostname for uniqueness
     hostname = socket.gethostname()
 
-    # Generate a unique service UUID based on the hostname
-    service_uuid = f"BEEF-{hostname}"
+    # Generate a valid UUID for the service
+    service_uuid = str(uuid.uuid4())  # Generate a proper 128-bit UUID
 
     # Create and register the file-sharing service
     service = FileSharingService(service_uuid)
