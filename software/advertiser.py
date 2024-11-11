@@ -78,7 +78,7 @@ async def main():
     await service_collection.register(bus)
 
     # Advertise the file-sharing service using the hostname
-    advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x0000, 60)
+    advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x0000, 0)
     adapter = await Adapter.get_first(bus)
     await advert.register(bus, adapter)
 
