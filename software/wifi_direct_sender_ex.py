@@ -14,6 +14,30 @@ logging.basicConfig(
     ]
 )
 
+def stop_network_manager():
+    """
+    Stops NetworkManager to avoid conflicts with Wi-Fi Direct.
+    """
+    logging.info("Stopping NetworkManager...")
+    result = subprocess.run(["sudo", "systemctl", "stop", "NetworkManager"], capture_output=True, text=True)
+    if result.returncode == 0:
+        logging.info("NetworkManager stopped successfully.")
+    else:
+        logging.warning(f"Failed to stop NetworkManager: {result.stderr}")
+
+
+def restart_network_manager():
+    """
+    Restarts NetworkManager to restore normal network functionality.
+    """
+    logging.info("Restarting NetworkManager...")
+    result = subprocess.run(["sudo", "systemctl", "start", "NetworkManager"], capture_output=True, text=True)
+    if result.returncode == 0:
+        logging.info("NetworkManager restarted successfully.")
+    else:
+        logging.warning(f"Failed to restart NetworkManager: {result.stderr}")
+
+
 def remove_existing_groups():
     """
     Removes any existing P2P groups to avoid conflicts.
@@ -118,6 +142,9 @@ if __name__ == "__main__":
     try:
         logging.info("Starting Wi-Fi Direct script...")
 
+        # Stop NetworkManager to prevent conflicts
+        stop_network_manager()
+
         # Remove any existing P2P groups
         remove_existing_groups()
 
@@ -139,4 +166,6 @@ if __name__ == "__main__":
         send_file(filename)
 
     finally:
+        # Restart NetworkManager after Wi-Fi Direct is finished
+        restart_network_manager()
         logging.info("Script finished.")
