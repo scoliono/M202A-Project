@@ -10,13 +10,21 @@ def remove_existing_groups():
     """
     print("Checking for existing P2P groups...")
     try:
+        # Check existing groups before attempting removal
+        check_result = subprocess.run(["sudo", "wpa_cli", "p2p_group_list"], capture_output=True, text=True)
+        if check_result.returncode == 0 and check_result.stdout.strip():
+            print(f"Existing P2P groups found:\n{check_result.stdout}")
+        else:
+            print("No existing P2P groups found.")
+
+        # Attempt to remove the group
         result = subprocess.run(["sudo", "wpa_cli", "p2p_group_remove", "p2p-wlan0-0"], capture_output=True, text=True)
         if result.returncode == 0:
             print("Existing P2P group removed successfully.")
         else:
-            print(f"No existing P2P group to remove or failed to remove: {result.stderr}")
+            print(f"Failed to remove P2P group (possibly no group exists): {result.stderr.strip()}")
     except Exception as e:
-        print(f"Error removing existing P2P group: {e}")
+        print(f"Error while removing existing P2P group: {e}")
 
 
 def create_p2p_group():
@@ -24,16 +32,24 @@ def create_p2p_group():
     Creates a P2P group using wpa_cli and returns the P2P interface name.
     """
     print("Creating P2P group...")
-    result = subprocess.run(["sudo", "wpa_cli", "p2p_group_add"], capture_output=True, text=True)
-    if result.returncode == 0 and "P2P-GROUP-STARTED" in result.stdout:
-        print(result.stdout)
-        # Extract the P2P interface name from the output
-        for line in result.stdout.splitlines():
-            if "P2P-GROUP-STARTED" in line:
-                interface = line.split()[1]  # Second field is the interface
-                print(f"P2P group created on interface: {interface}")
-                return interface
-    print(f"Failed to create P2P group: {result.stderr}")
+    try:
+        # Attempt to create a new P2P group
+        result = subprocess.run(["sudo", "wpa_cli", "p2p_group_add"], capture_output=True, text=True)
+        print(f"Command executed: {' '.join(result.args)}")
+        print(f"Command output:\n{result.stdout}")
+        print(f"Command errors (if any):\n{result.stderr}")
+
+        if result.returncode == 0 and "P2P-GROUP-STARTED" in result.stdout:
+            # Extract the P2P interface name from the output
+            for line in result.stdout.splitlines():
+                if "P2P-GROUP-STARTED" in line:
+                    interface = line.split()[1]  # Second field is the interface
+                    print(f"P2P group created successfully on interface: {interface}")
+                    return interface
+        else:
+            print(f"Failed to create P2P group. stderr:\n{result.stderr.strip()}")
+    except Exception as e:
+        print(f"Error while creating P2P group: {e}")
     return None
 
 
@@ -50,7 +66,7 @@ def configure_ip(interface, ip, netmask="255.255.255.0"):
     if result.returncode == 0:
         print(f"IP {ip} configured successfully on {interface}.")
     else:
-        print(f"Failed to configure IP: {result.stderr}")
+        print(f"Failed to configure IP: {result.stderr.strip()}")
 
 
 def wait_for_client(interface, timeout=None):
@@ -104,24 +120,24 @@ def send_file(filename, port=9000):
 if __name__ == "__main__":
     filename = "random_file"  # Replace with your file
     try:
-        # Remove any existing P2P groups
+        # Step 1: Remove any existing P2P groups
         remove_existing_groups()
 
-        # Create P2P group and get the P2P interface name
+        # Step 2: Create a new P2P group
         p2p_interface = create_p2p_group()
         if not p2p_interface:
             print("Failed to create P2P group. Exiting.")
             exit(1)
 
-        # Configure IP for P2P interface
+        # Step 3: Configure IP address for the P2P interface
         configure_ip(p2p_interface, "192.168.49.1")
 
-        # Wait for a client to connect
+        # Step 4: Wait for a client to connect
         if not wait_for_client(p2p_interface, timeout=None):
             print("No client connected. Exiting.")
             exit(1)
 
-        # Send file once a client is connected
+        # Step 5: Send file to the connected client
         send_file(filename)
 
     finally:
