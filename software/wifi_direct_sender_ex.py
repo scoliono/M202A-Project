@@ -53,17 +53,32 @@ def send_file(filename, port=9000):
     except Exception as e:
         print(f"Error sending file: {e}")
 
+def start_wifi():
+    """
+    Re-enables Wi-Fi after the script finishes.
+    """
+    print("Re-enabling Wi-Fi...")
+    result = subprocess.run(["sudo", "ifconfig", "wlan0", "up"], capture_output=True, text=True)
+    if result.returncode == 0:
+        print("Wi-Fi re-enabled successfully.")
+    else:
+        print(f"Failed to re-enable Wi-Fi: {result.stderr}")
+
 if __name__ == "__main__":
     filename = "random_file"  # Replace with the actual file path
-    stop_wifi()  # Stop Wi-Fi before enabling Wi-Fi Direct
 
-    # Start Wi-Fi Direct Group Owner mode in a separate thread
-    go_thread = threading.Thread(target=start_go, daemon=True)
-    go_thread.start()
+    try:
+        stop_wifi()  # Stop Wi-Fi before enabling Wi-Fi Direct
 
-    # Wait briefly to ensure the Group Owner mode is initialized
-    import time
-    time.sleep(5)
+        # Start Wi-Fi Direct Group Owner mode in a separate thread
+        go_thread = threading.Thread(target=start_go, daemon=True)
+        go_thread.start()
 
-    # Send file in the main thread
-    send_file(filename)
+        # Wait briefly to ensure the Group Owner mode is initialized
+        import time
+        time.sleep(5)
+
+        # Send file in the main thread
+        send_file(filename)
+    finally:
+        start_wifi()  # Re-enable Wi-Fi after the script finishes
