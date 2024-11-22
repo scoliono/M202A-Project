@@ -2,6 +2,7 @@ import os
 import socket
 import subprocess
 import threading
+import time
 from hostp2pd import HostP2pD
 
 def stop_wifi():
@@ -14,6 +15,83 @@ def stop_wifi():
         print("Wi-Fi disabled successfully.")
     else:
         print(f"Failed to disable Wi-Fi: {result.stderr}")
+
+def start_wifi():
+    """
+    Re-enables Wi-Fi after the script finishes.
+    """
+    print("Re-enabling Wi-Fi...")
+    result = subprocess.run(["sudo", "ifconfig", "wlan0", "up"], capture_output=True, text=True)
+    if result.returncode == 0:
+        print("Wi-Fi re-enabled successfully.")
+    else:
+        print(f"Failed to re-enable Wi-Fi: {result.stderr}")
+
+def configure_ip(interface, ip, netmask="255.255.255.0"):
+    """
+    Manually configures the IP address on the interface.
+    """
+    print(f"Configuring IP {ip} on {interface}...")
+    result = subprocess.run(
+        ["sudo", "ifconfig", interface, ip, "netmask", netmask, "up"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        print(f"IP {ip} configured successfully on {interface}.")
+    else:
+        print(f"Failed to configure IP: {result.stderr}")
+
+def wait_for_ip(interface, ip, timeout=10):
+    """
+    Waits for the specified IP to be assigned to the interface.
+    """
+    print(f"Waiting for IP {ip} to be assigned to {interface}...")
+    start_time = time.time()
+    while True:
+        try:
+            result = subprocess.run(
+                ["ip", "addr", "show", interface],
+                capture_output=True,
+                text=True,
+            )
+            if ip in result.stdout:
+                print(f"IP {ip} assigned to {interface}.")
+                return True
+        except Exception as e:
+            print(f"Error checking IP: {e}")
+        time.sleep(1)
+
+        if (time.time() - start_time) > timeout:
+            print(f"Timeout waiting for IP {ip} on {interface}.")
+            return False
+
+def wait_for_client(interface, timeout=None):
+    """
+    Waits for a client to connect to the Wi-Fi Direct group.
+    If timeout is None, it waits indefinitely.
+    """
+    print(f"Waiting for a client to connect to {interface}...")
+    start_time = time.time()
+    while True:
+        try:
+            # Check the number of associated clients
+            result = subprocess.run(
+                ["iw", interface, "station", "dump"],
+                capture_output=True,
+                text=True,
+            )
+            if result.stdout.strip():  # If there is any output, a client is connected
+                print("Client connected.")
+                return True
+        except Exception as e:
+            print(f"Error checking for client connection: {e}")
+        time.sleep(1)
+
+        # Check for timeout if specified
+        if timeout and (time.time() - start_time) > timeout:
+            print(f"No client connected after {timeout} seconds.")
+            return False
 
 def start_go():
     """
@@ -53,20 +131,8 @@ def send_file(filename, port=9000):
     except Exception as e:
         print(f"Error sending file: {e}")
 
-def start_wifi():
-    """
-    Re-enables Wi-Fi after the script finishes.
-    """
-    print("Re-enabling Wi-Fi...")
-    result = subprocess.run(["sudo", "ifconfig", "wlan0", "up"], capture_output=True, text=True)
-    if result.returncode == 0:
-        print("Wi-Fi re-enabled successfully.")
-    else:
-        print(f"Failed to re-enable Wi-Fi: {result.stderr}")
-
 if __name__ == "__main__":
-    filename = "random_file"  # Replace with the actual file path
-
+    filename = "random_file"  # Replace with your file
     try:
         stop_wifi()  # Stop Wi-Fi before enabling Wi-Fi Direct
 
@@ -75,10 +141,22 @@ if __name__ == "__main__":
         go_thread.start()
 
         # Wait briefly to ensure the Group Owner mode is initialized
-        import time
         time.sleep(5)
 
-        # Send file in the main thread
+        # Configure IP for Wi-Fi Direct interface
+        configure_ip("p2p-dev-wlan0", "192.168.49.1")
+
+        # Wait for the IP to be assigned
+        if not wait_for_ip("p2p-dev-wlan0", "192.168.49.1"):
+            print("Failed to configure the IP. Exiting.")
+            exit(1)
+
+        # Wait for a client to connect (indefinitely or with timeout)
+        if not wait_for_client("p2p-dev-wlan0", timeout=None):  # Set timeout=None to wait forever
+            print("No client connected. Exiting.")
+            exit(1)
+
+        # Send file once a client is connected
         send_file(filename)
     finally:
         start_wifi()  # Re-enable Wi-Fi after the script finishes
