@@ -4,6 +4,21 @@ import subprocess
 import time
 
 
+def remove_existing_groups():
+    """
+    Removes any existing P2P groups to avoid conflicts.
+    """
+    print("Checking for existing P2P groups...")
+    try:
+        result = subprocess.run(["sudo", "wpa_cli", "p2p_group_remove", "p2p-wlan0-0"], capture_output=True, text=True)
+        if result.returncode == 0:
+            print("Existing P2P group removed successfully.")
+        else:
+            print(f"No existing P2P group to remove or failed to remove: {result.stderr}")
+    except Exception as e:
+        print(f"Error removing existing P2P group: {e}")
+
+
 def create_p2p_group():
     """
     Creates a P2P group using wpa_cli and returns the P2P interface name.
@@ -89,6 +104,9 @@ def send_file(filename, port=9000):
 if __name__ == "__main__":
     filename = "random_file"  # Replace with your file
     try:
+        # Remove any existing P2P groups
+        remove_existing_groups()
+
         # Create P2P group and get the P2P interface name
         p2p_interface = create_p2p_group()
         if not p2p_interface:
