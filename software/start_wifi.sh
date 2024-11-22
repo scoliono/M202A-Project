@@ -3,13 +3,12 @@
 # Script to reconnect to Wi-Fi
 
 echo "Enabling wlan0 interface..."
-sudo ifconfig wlan0 up
+sudo ip link set wlan0 up
 
-echo "Starting Wi-Fi services..."
+echo "Starting wpa_supplicant service..."
 sudo systemctl start wpa_supplicant
-sudo systemctl start dhcpcd
 
-echo "Attempting to reconnect to the Wi-Fi network..."
+echo "Requesting IP address for wlan0..."
 sudo dhclient wlan0
 
 echo "Wi-Fi reconnected."
