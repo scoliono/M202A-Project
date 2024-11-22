@@ -14,6 +14,7 @@ logging.basicConfig(
     ]
 )
 
+
 def stop_network_manager():
     """
     Stops NetworkManager to avoid conflicts with Wi-Fi Direct.
@@ -137,8 +138,35 @@ def send_file(filename, port=9000):
         logging.error(f"Error sending file: {e}")
 
 
+def reconnect_to_wifi(ssid, password):
+    """
+    Reconnects to the specified Wi-Fi network.
+    """
+    logging.info(f"Reconnecting to Wi-Fi network '{ssid}'...")
+    try:
+        commands = [
+            ["sudo", "wpa_cli", "-i", "wlan0", "add_network"],
+            ["sudo", "wpa_cli", "-i", "wlan0", "set_network", "0", f'ssid="{ssid}"'],
+            ["sudo", "wpa_cli", "-i", "wlan0", "set_network", "0", f'psk="{password}"'],
+            ["sudo", "wpa_cli", "-i", "wlan0", "enable_network", "0"],
+            ["sudo", "wpa_cli", "-i", "wlan0", "save_config"],
+        ]
+        for cmd in commands:
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                logging.error(f"Failed to execute command '{cmd}': {result.stderr}")
+                return False
+        logging.info("Reconnected to Wi-Fi successfully.")
+        return True
+    except Exception as e:
+        logging.error(f"Error reconnecting to Wi-Fi: {e}")
+        return False
+
+
 if __name__ == "__main__":
     filename = "random_file"  # Replace with your file
+    ssid = "SpectrumSetup-6B"
+    password = "grainphone703"
     try:
         logging.info("Starting Wi-Fi Direct script...")
 
@@ -168,4 +196,5 @@ if __name__ == "__main__":
     finally:
         # Restart NetworkManager after Wi-Fi Direct is finished
         restart_network_manager()
+        reconnect_to_wifi(ssid, password)
         logging.info("Script finished.")
