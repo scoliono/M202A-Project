@@ -1,4 +1,4 @@
-import os
+\import os
 import socket
 import subprocess
 import time
@@ -14,6 +14,40 @@ logging.basicConfig(
     ]
 )
 
+def restart_wpa_supplicant():
+    """
+    Restarts the wpa_supplicant service to ensure proper P2P interface initialization.
+    """
+    logging.info("Restarting wpa_supplicant...")
+    subprocess.run(["sudo", "systemctl", "stop", "wpa_supplicant"], capture_output=True, text=True)
+    time.sleep(2)  # Allow time for the service to stop
+    result = subprocess.run(["sudo", "systemctl", "start", "wpa_supplicant"], capture_output=True, text=True)
+    if result.returncode == 0:
+        logging.info("wpa_supplicant restarted successfully.")
+    else:
+        logging.error(f"Failed to restart wpa_supplicant: {result.stderr}")
+
+def verify_or_create_interface():
+    """
+    Verifies if the `p2p-dev-wlan0` interface exists and reinitializes if necessary.
+    """
+    logging.info("Verifying or creating the `p2p-dev-wlan0` interface...")
+    result = subprocess.run(["iw", "dev"], capture_output=True, text=True)
+    if "p2p-dev-wlan0" in result.stdout:
+        logging.info("`p2p-dev-wlan0` interface is already available.")
+        return True
+
+    logging.warning("`p2p-dev-wlan0` interface not found. Restarting wpa_supplicant to create it...")
+    restart_wpa_supplicant()
+
+    # Recheck after restarting wpa_supplicant
+    result = subprocess.run(["iw", "dev"], capture_output=True, text=True)
+    if "p2p-dev-wlan0" in result.stdout:
+        logging.info("`p2p-dev-wlan0` interface created successfully.")
+        return True
+
+    logging.error("Failed to create `p2p-dev-wlan0` interface after restarting wpa_supplicant.")
+    return False
 
 def disconnect_wifi():
     """
@@ -25,21 +59,6 @@ def disconnect_wifi():
         logging.info("Wi-Fi disconnected successfully.")
     else:
         logging.warning(f"Failed to disconnect Wi-Fi: {result.stderr}")
-
-
-def verify_interface(interface):
-    """
-    Verifies if a given interface exists.
-    """
-    logging.info(f"Verifying interface {interface}...")
-    result = subprocess.run(["iw", "dev"], capture_output=True, text=True)
-    if interface in result.stdout:
-        logging.info(f"Interface {interface} is available.")
-        return True
-    else:
-        logging.error(f"Interface {interface} not found.")
-        return False
-
 
 def remove_existing_groups():
     """
@@ -55,7 +74,6 @@ def remove_existing_groups():
             logging.warning(f"No existing P2P group to remove or failed to remove: {result.stderr}")
     except Exception as e:
         logging.error(f"Error removing existing P2P group: {e}")
-
 
 def create_p2p_group():
     """
@@ -75,7 +93,6 @@ def create_p2p_group():
     logging.error(f"Failed to create P2P group: {result.stderr}")
     return None
 
-
 def configure_ip(interface, ip, netmask="255.255.255.0"):
     """
     Manually configures the IP address on the interface.
@@ -90,7 +107,6 @@ def configure_ip(interface, ip, netmask="255.255.255.0"):
         logging.info(f"IP {ip} configured successfully on {interface}.")
     else:
         logging.error(f"Failed to configure IP: {result.stderr}")
-
 
 def reconnect_to_wifi(ssid, password):
     """
@@ -116,25 +132,28 @@ def reconnect_to_wifi(ssid, password):
         logging.error(f"Error reconnecting to Wi-Fi: {e}")
         return False
 
-
 if __name__ == "__main__":
+    filename = "random_file"  # Replace with your file
     ssid = "SpectrumSetup-6B"
     password = "grainphone703"
     try:
         logging.info("Starting Wi-Fi Direct script...")
 
-        # Disconnect Wi-Fi
-        disconnect_wifi()
+        # Restart wpa_supplicant to ensure proper initialization
+        restart_wpa_supplicant()
 
-        # Verify p2p-dev-wlan0 exists
-        if not verify_interface("p2p-dev-wlan0"):
-            logging.error("P2P interface p2p-dev-wlan0 not found. Exiting.")
+        # Verify or create the P2P device interface
+        if not verify_or_create_interface():
+            logging.error("Failed to initialize P2P device interface. Exiting.")
             exit(1)
+
+        # Disconnect Wi-Fi to avoid conflicts
+        disconnect_wifi()
 
         # Remove any existing P2P groups
         remove_existing_groups()
 
-        # Create P2P group
+        # Create P2P group and get the P2P interface name
         p2p_interface = create_p2p_group()
         if not p2p_interface:
             logging.error("Failed to create P2P group. Exiting.")
@@ -143,7 +162,9 @@ if __name__ == "__main__":
         # Configure IP for P2P interface
         configure_ip(p2p_interface, "192.168.49.1")
 
+        logging.info("Wi-Fi Direct setup complete.")
+
     finally:
-        # Reconnect to Wi-Fi
+        # Reconnect to the original Wi-Fi network
         reconnect_to_wifi(ssid, password)
         logging.info("Script finished.")
