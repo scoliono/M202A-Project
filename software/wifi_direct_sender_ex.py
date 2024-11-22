@@ -30,24 +30,37 @@ def restart_wpa_supplicant():
 def verify_or_create_interface():
     """
     Verifies if the `p2p-dev-wlan0` interface exists and reinitializes if necessary.
+    If the interface is not found, attempts to create it explicitly.
     """
     logging.info("Verifying or creating the `p2p-dev-wlan0` interface...")
+    
+    # Check if the interface already exists
     result = subprocess.run(["iw", "dev"], capture_output=True, text=True)
     if "p2p-dev-wlan0" in result.stdout:
         logging.info("`p2p-dev-wlan0` interface is already available.")
         return True
 
-    logging.warning("`p2p-dev-wlan0` interface not found. Restarting wpa_supplicant to create it...")
+    logging.warning("`p2p-dev-wlan0` interface not found. Attempting to create it...")
+
+    # Restart wpa_supplicant to ensure proper initialization
     restart_wpa_supplicant()
 
-    # Recheck after restarting wpa_supplicant
+    # Explicitly create the P2P interface using `iw`
+    result = subprocess.run(["iw", "phy", "phy0", "interface", "add", "p2p-dev-wlan0", "type", "p2p_device"],
+                            capture_output=True, text=True)
+    if result.returncode == 0:
+        logging.info("`p2p-dev-wlan0` interface created successfully.")
+        return True
+
+    # Check again if the interface was created
     result = subprocess.run(["iw", "dev"], capture_output=True, text=True)
     if "p2p-dev-wlan0" in result.stdout:
-        logging.info("`p2p-dev-wlan0` interface created successfully.")
+        logging.info("`p2p-dev-wlan0` interface verified after explicit creation.")
         return True
 
     logging.error("Failed to create `p2p-dev-wlan0` interface after restarting wpa_supplicant.")
     return False
+
 
 def disconnect_wifi():
     """
