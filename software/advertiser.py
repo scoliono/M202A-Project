@@ -35,7 +35,7 @@ class FileSharingService(Service):
         # Add the MAC address to the pkg list
         pkg_list_with_mac = {
             "mac": self.mac_address,  # Include the MAC address
-            "pkgs": self.packages.keys(),
+            "pkgs": list(self.packages.keys())
         }
         return bytes(json.dumps(pkg_list_with_mac), "utf-8")
 
