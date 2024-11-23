@@ -7,13 +7,8 @@ from bluez_peripheral.gatt.service import Service, ServiceCollection
 from bluez_peripheral.gatt.characteristic import characteristic, CharacteristicFlags as CharFlags
 from bluez_peripheral.advert import Advertisement
 from bluez_peripheral.util import get_message_bus, Adapter
-
-
-# Mock data for files and chunks
-FILES = {
-    "app1.apk": {"version": "1.0.0", "chunks": 4, "available_chunks": [0, 1, 2, 3]},
-    "app2.apk": {"version": "2.3.1", "chunks": 8, "available_chunks": [0, 2, 4, 6]},
-}
+from sync import *
+from typing import Dict, Optional
 
 
 def get_wifi_mac_address():
@@ -30,49 +25,49 @@ def get_wifi_mac_address():
 class FileSharingService(Service):
     def __init__(self, uuid):
         super().__init__(uuid, True)  # Custom service UUID
-        self.files = FILES  # File metadata
         self.client_requests = {}  # Map of client identifiers to requested files
         self.mac_address = get_wifi_mac_address()  # Retrieve Wi-Fi MAC address
+        self.packages: Dict[str, Package] = {}
 
-    # Read-only characteristic to advertise the list of files
+    # Read-only characteristic to advertise the list of packages
     @characteristic("BEF0", CharFlags.READ)
-    def file_list(self, options):
-        # Add the MAC address to the file list
-        file_list_with_mac = {
-            "mac_address": self.mac_address,  # Include the MAC address
-            "files": {k: {"version": v["version"], "chunks": v["chunks"]} for k, v in self.files.items()},
+    def pkg_list(self, options):
+        # Add the MAC address to the pkg list
+        pkg_list_with_mac = {
+            "mac": self.mac_address,  # Include the MAC address
+            "pkgs": self.packages.keys(),
         }
-        return bytes(json.dumps(file_list_with_mac), "utf-8")
+        return bytes(json.dumps(pkg_list_with_mac), "utf-8")
 
-    # Write-only characteristic to request chunk availability for a file
+    # Write-only characteristic to request chunk availability for a package
     @characteristic("BEF1", CharFlags.WRITE)
-    def file_request(self, options):
+    def pkg_request(self, options):
         pass  # Placeholder (Python 3.9+ doesn't require this)
 
-    # Setter for the file request characteristic
-    @file_request.setter
-    def file_request(self, value, options):
+    # Setter for the package request characteristic
+    @pkg_request.setter
+    def pkg_request(self, value, options):
         # Use client-specific identifier from options
         client_id = options.device
 
-        # Decode the file name from the client's write request
-        requested_file = value.decode("utf-8")
-        self.client_requests[client_id] = requested_file
-        print(f"Client {client_id} requested file: {requested_file}")
+        # Decode the package name from the client's write request
+        requested_pkg = value.decode("utf-8")
+        self.client_requests[client_id] = requested_pkg
+        print(f"Client {client_id} requested file: {requested_pkg}")
 
-    # Read-only characteristic to respond with available chunks
+    # Read-only characteristic to respond with package manifest
     @characteristic("BEF2", CharFlags.READ)
-    def chunk_availability(self, options):
+    def pkg_manifest(self, options):
         # Use client-specific identifier from options
         client_id = options.device
 
         # Check if this client has made a request
         if client_id in self.client_requests:
-            requested_file = self.client_requests[client_id]
-            if requested_file in self.files:
-                chunks = self.files[requested_file]["available_chunks"]
-                # Return available chunks as a JSON list
-                return bytes(json.dumps(chunks), "utf-8")
+            requested_pkg = self.client_requests[client_id]
+            if requested_pkg in self.packages:
+                pkg = self.packages[requested_pkg]
+                # Return manifest as a JSON list
+                return bytes(json.dumps(pkg.get_manifest()), "utf-8")
 
         # Return an empty list if no valid request is found
         return bytes(json.dumps([]), "utf-8")
@@ -88,8 +83,14 @@ async def main():
     # Generate a valid UUID for the service
     service_uuid = str(uuid.uuid4())  # Generate a proper 128-bit UUID
 
+    # Mock data for files and chunks
+    pkg = Package("SamplePackage", 1)
+    pkg.write_chunk("/src/file1.txt", 0, b"Hello World", version=1)
+    pkg.write_chunk("/src/file2.txt", 0, b"Some data", version=1)
+
     # Create and register the file-sharing service
     service = FileSharingService(service_uuid)
+    service.packages[pkg.name] = pkg    # add our package
     service_collection = ServiceCollection()
     service_collection.add_service(service)
     await service_collection.register(bus)
