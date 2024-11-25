@@ -2,10 +2,10 @@ import asyncio
 import json
 import socket  # To get the hostname
 import netifaces  # For getting MAC address
-from bleak import BleakScanner
 from bluez_peripheral.gatt.service import Service, ServiceCollection
 from bluez_peripheral.gatt.characteristic import characteristic, CharacteristicFlags as CharFlags
 from bluez_peripheral.advert import Advertisement
+from bluez_peripheral.agent import NoIoAgent
 from bluez_peripheral.util import get_message_bus, Adapter
 from typing import Dict
 
@@ -105,6 +105,9 @@ async def server():
     advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x0000, 0)
     adapter = await Adapter.get_first(bus)
     await advert.register(bus, adapter)
+
+    agent = NoIoAgent()
+    await agent.register(bus)
 
     print(f"File Sharing Service is running as '{hostname}' and being advertised.")
     print("Use a BLE scanner app to connect and interact with the service.")
