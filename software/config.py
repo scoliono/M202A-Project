@@ -1,2 +1,3 @@
 LOCAL_DEVICE_NAME = "rpi3"
 TARGET_DEVICE_NAME = "rpi1"
+UUID = "de960fd7-befb-4dab-aa6c-29449c725039"
