@@ -7,9 +7,9 @@ from bluez_peripheral.gatt.characteristic import characteristic, CharacteristicF
 from bluez_peripheral.advert import Advertisement
 from bluez_peripheral.agent import NoIoAgent
 from bluez_peripheral.util import get_message_bus, Adapter
-from typing import Dict
+from typing import Dict, Optional
 
-from config import UUID
+from config import UUID, PKG_LIST_R, PKG_MANIFEST_R, PKG_REQUEST_W
 from sync import *
 
 
@@ -22,18 +22,13 @@ def get_wifi_mac_address():
                 return addr_info[netifaces.AF_LINK][0]["addr"]
     return "00:00:00:00:00:00"  # Default if no Wi-Fi interface is found
 
-# Bluetooth characteristic IDs
-PKG_LIST_R = "BEF0"
-PKG_REQUEST_W = "BEF1"
-PKG_MANIFEST_R = "BEF2"
-
 # Define the BLE service
 class FileSharingService(Service):
-    def __init__(self):
+    def __init__(self, packages: Optional[Dict[str, Package]] = {}):
         super().__init__(UUID, True)  # Custom service UUID
         self.client_requests = {}  # Map of client identifiers to requested files
         self.mac_address = get_wifi_mac_address()  # Retrieve Wi-Fi MAC address
-        self.packages: Dict[str, Package] = {}
+        self.packages: Dict[str, Package] = packages
 
     # Read-only characteristic to advertise the list of packages
     @characteristic(PKG_LIST_R, CharFlags.READ)
@@ -79,7 +74,7 @@ class FileSharingService(Service):
         return bytes(json.dumps([]), "utf-8")
 
 
-async def server():
+async def server(packages = None):
     """
     Hosts the FileSharingService over Bluetooth LE.
     """
@@ -89,14 +84,8 @@ async def server():
     # Retrieve the hostname for uniqueness
     hostname = socket.gethostname()
 
-    # Mock data for files and chunks
-    pkg = Package("SamplePackage", 1)
-    pkg.write_chunk("/src/file1.txt", 0, b"Hello World", version=1)
-    pkg.write_chunk("/src/file2.txt", 0, b"Some data", version=1)
-
     # Create and register the file-sharing service
-    service = FileSharingService()
-    service.packages[pkg.name] = pkg    # add our package
+    service = FileSharingService(packages)
     service_collection = ServiceCollection()
     service_collection.add_service(service)
     await service_collection.register(bus)
