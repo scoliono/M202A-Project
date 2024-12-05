@@ -21,6 +21,7 @@ async def main():
     # Initialize state of package and chunks
     pkg = Package("SamplePackage", 1, FILE_DIR)
     pkg.load_from_filesystem()
+    our_manifest = pkg.load_manifest(FILE_DIR + "/manifest.json")
 
     packages = {
         "SamplePackage": pkg
@@ -29,12 +30,6 @@ async def main():
     # state machine
     state = State.STARTUP
 
-    # BLE + Wi-Fi services
-    scanner = BLEServiceScanner(packages, on_manifest=on_manifest_received)
-
-    # arent these classes basically the same?
-    wifi = FileTransferServer(pkg, callback=on_wifi_server_finished)
-
     # peer's manifest, in order to compare chunk versions
     peer_manifest = {}
     def on_manifest_received(manifest: dict):
@@ -42,6 +37,12 @@ async def main():
         state = State.BT_COMPLETE
         peer_manifest = manifest
         print('[main] Got package manifest')
+    
+    # BLE + Wi-Fi services
+    scanner = BLEServiceScanner(packages, on_manifest=on_manifest_received)
+
+    # arent these classes basically the same?
+    wifi = FileTransferServer(pkg, callback=on_wifi_server_finished)
 
     def on_wifi_finished(success: bool):
         global state
@@ -53,11 +54,12 @@ async def main():
 
     while True:
         # switch between BT advertising and scanning every 5s
+        # either function may call `on_manifest_received()` to exit this loop
         while state != State.BT_COMPLETE:
             state = State.BT_ADVERT
-            await ble_server(packages)
+            await ble_server(packages, on_manifest_received)
             state = State.BT_SCAN
-            await scanner.scan_and_read()
+            await scanner.scan_and_read(our_manifest)
 
         # TODO: either start AP/connect to it
 
@@ -68,7 +70,7 @@ async def main():
         # we know which chunks we need, now do WiFi transfer
         while state != State.WIFI_COMPLETE:
             if state == State.WIFI_AP:
-                wifi.start_server()
+                wifi.start_server(diff)
             elif state == State.WIFI_CLIENT:
                 wifi.start_client(diff)
 
