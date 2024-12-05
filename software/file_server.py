@@ -1,34 +1,70 @@
-import socket
-import os
-import json
-import base64  # Added for encoding/decoding binary data
+import socketio
+import base64
+import time
+import threading
 from typing import Callable, List
 
 
 class FileTransferServer:
     def __init__(self, package: 'Package', callback: Callable):
         """
-        Initialize the server with diff dictionary, and a callback function.
-        :param diff: A dictionary representing the files to process (key: file name, value: file data).
-        :param callback: A function to call with success=True/False upon completion or termination.
+        Initialize the SocketIO server with package and callback.
+        :param package: Package object for handling file chunks
+        :param callback: Function to call upon completion or termination
         """
         self.host = '192.168.4.1'
         self.port = 65432
         self.package = package
         self.callback = callback
-        self.success = True  # Will be set to False if the connection terminates early
+        self.success = True
+        self.diff = None
+        
+        # Tracking variables
+        self.remaining_chunks = set()
+        self.last_activity_time = None
+        self.inactivity_timeout = 5  # 5 seconds
+        self.connection_active = False
+        
+        # Create SocketIO server
+        self.sio = socketio.Server()
+        self.app = socketio.WSGIApp(self.sio)
+        
+        # Register event handlers
+        self.setup_event_handlers()
 
-    def handle_message(self, message, conn):
+    def setup_event_handlers(self):
         """
-        Handle received messages and perform appropriate actions.
-        :param message: The received JSON message.
-        :param conn: The socket connection object.
+        Set up SocketIO event handlers for different types of messages.
         """
-        if message['type'] == 'request':
-            # Process file chunk request from other peer
-            file_path = message['content']['file_path']
-            block_number = message['content']['block_number']
-            version = message.get('version', 1)
+        @self.sio.on('connect')
+        def on_connect(sid, environ):
+            print(f"Client connected: {sid}")
+            self.connection_active = True
+            self.last_activity_time = time.time()
+            
+            # If diff is set, start processing chunks after connection
+            if hasattr(self, 'diff') and self.diff:
+                # Convert diff to set of remaining chunks
+                self.remaining_chunks = set(
+                    (chunk.file_path, chunk.block_number, chunk.version) 
+                    for chunk in self.diff
+                )
+                self.process_diff(sid)
+                
+                # Start inactivity timeout thread
+                self.start_inactivity_monitor(sid)
+
+        @self.sio.on('request')
+        def on_request(sid, data):
+            """
+            Handle file chunk request from client.
+            """
+            # Update last activity time
+            self.last_activity_time = time.time()
+            
+            file_path = data['content']['file_path']
+            block_number = data['content']['block_number']
+            version = data.get('version', 1)
             
             # Read chunk from package
             chunk_data = self.package.read_chunk(file_path, block_number, version)
@@ -43,112 +79,163 @@ class FileTransferServer:
                         'data': base64.b64encode(chunk_data).decode('utf-8')
                     }
                 }
+                self.sio.emit('file', response, room=sid)
             else:
-                response = {
+                error_response = {
                     'type': 'error',
                     'content': f"Chunk not found: {file_path}, block {block_number}"
                 }
+                self.sio.emit('error', error_response, room=sid)
+
+        @self.sio.on('file')
+        def on_file(sid, data):
+            """
+            Process received file chunk.
+            """
+            # Update last activity time
+            self.last_activity_time = time.time()
             
-            conn.sendall(json.dumps(response).encode())
-        elif message['type'] == 'file':
-            # Process received file chunk
-            file_path = message['content']['file_path']
-            block_number = message['content']['block_number']
-            version = message['content'].get('version', 1)
+            file_path = data['content']['file_path']
+            block_number = data['content']['block_number']
+            version = data['content'].get('version', 1)
             
             # Decode base64 chunk data
-            chunk_data = base64.b64decode(message['content']['data'])
+            chunk_data = base64.b64decode(data['content']['data'])
             
             # Write chunk to package
             self.package.write_chunk(file_path, block_number, chunk_data, version)
-            print(f"Chunk '{file_name}' received and saved.")
-        elif message['type'] == 'error':
-            # Log errors
-            print(f"Error: {message['content']}")
+            print(f"Chunk '{file_path}' received and saved.")
+            
+            # Remove this chunk from remaining chunks
+            remaining_key = (file_path, block_number, version)
+            if remaining_key in self.remaining_chunks:
+                self.remaining_chunks.remove(remaining_key)
+                print(f"Remaining chunks: {len(self.remaining_chunks)}")
+
+        @self.sio.on('disconnect')
+        def on_disconnect(sid):
+            print(f"Client disconnected: {sid}")
+            self.connection_active = False
+            self.finalize_transfer()
+
+    def start_inactivity_monitor(self, sid):
+        """
+        Monitor connection for inactivity and potential closure
+        """
+        def monitor():
+            while self.connection_active:
+                # Check for inactivity
+                current_time = time.time()
+                if (current_time - self.last_activity_time > self.inactivity_timeout and 
+                    len(self.remaining_chunks) == 0):
+                    print("Inactivity timeout reached. Closing connection.")
+                    self.connection_active = False
+                    self.sio.disconnect(sid)
+                    self.finalize_transfer()
+                    break
+                
+                # Check every second
+                time.sleep(1)
+        
+        # Start monitoring in a separate thread
+        threading.Thread(target=monitor, daemon=True).start()
+
+    def finalize_transfer(self):
+        """
+        Finalize the transfer and call the callback
+        """
+        # Ensure this is only called once
+        if not hasattr(self, '_finalized'):
+            self._finalized = True
+            self.success = len(self.remaining_chunks) == 0
+            print(f"Transfer {'successful' if self.success else 'failed'}. "
+                  f"Remaining chunks: {len(self.remaining_chunks)}")
+            self.callback(self.success)
+
+    def process_diff(self, sid):
+        """
+        Process the diff by requesting chunks
+        """
+        if not self.diff:
+            print("No diff to process")
+            return
+
+        # Request out-of-sync chunks
+        for chunk in self.diff:
+            request_msg = {
+                'type': 'request',
+                'content': {
+                    'file_path': chunk.file_path,
+                    'block_number': chunk.block_number,
+                    'version': chunk.version,
+                }
+            }
+            self.sio.emit('request', request_msg, room=sid)
 
     def start_client(self, diff: List['ChunkVersion']):
         """
-        Start the client, connect to the server, and handle messages.
-        :param diff: The remaining packages to get.
+        Start the client and request out-of-sync chunks.
+        :param diff: The remaining packages to get
         """
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-                client_socket.connect((self.host, self.port))
-                print(f"Connected to server at {self.host}:{self.port}")
+            # Store diff for later processing
+            self.diff = diff
 
-                # Request out-of-sync chunks from server
-                for chunk in diff:
-                    request_msg = {
-                        'type': 'request',
-                        'content': {
-                            'file_path': chunk.file_path,
-                            'block_number': chunk.block_number,
-                            'version': chunk.version,
-                        }
-                    }
-                    client_socket.send(json.dumps(request_msg).encode('utf-8'))
-
-                while True:
-                    try:
-                        # Receive data from the server
-                        data = client_socket.recv(10240).decode()
-                        if not data:
-                            # Connection terminated early
-                            self.success = False
-                            break
-
-                        response_msg = json.loads(data)
-                        print(f"Received: {message}")
-                        self.handle_message(response_msg, client_socket)
-                    except Exception as e:
-                        print(f"Error: {e}")
-                        self.success = False
-                        break
+            # Connect to server
+            client = socketio.Client()
+            
+            # Set up client-side event handlers
+            @client.on('connect')
+            def on_connect():
+                # Track connection state
+                self.connection_active = True
+                self.last_activity_time = time.time()
+                
+                # Convert diff to set of remaining chunks
+                self.remaining_chunks = set(
+                    (chunk.file_path, chunk.block_number, chunk.version) 
+                    for chunk in diff
+                )
+                
+                # Process diff after connection
+                self.process_diff(client.sid)
+                
+                # Start inactivity monitor
+                self.start_inactivity_monitor(client.sid)
+            
+            # Connect to the server
+            client.connect(f'http://{self.host}:{self.port}')
+            
+            # Keep the client running
+            client.wait()
+        except Exception as e:
+            print(f"Client error: {e}")
+            self.success = False
+            self.finalize_transfer()
         finally:
-            # Call the callback with the success status
-            self.callback(self.success)
+            # Ensure callback is called
+            self.finalize_transfer()
 
-    def start_server(self):
+    def start_server(self, diff: List['ChunkVersion'] = None):
         """
-        Start the server, accept connections, and handle messages.
+        Start the SocketIO server and listen for connections.
+        :param diff: Optional diff to process when a client connects
         """
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-                server_socket.bind((self.host, self.port))
-                server_socket.listen()
-                print(f"Server listening on {self.host}:{self.port}")
+            # Store diff for later processing if provided
+            if diff:
+                self.diff = diff
 
-                conn, addr = server_socket.accept()
-                print(f"Connected by {addr}")
-
-                with conn:
-                    # Request out-of-sync chunks from peer
-                    for chunk in diff:
-                        request_msg = {
-                            'type': 'request',
-                            'content': {
-                                'file_path': chunk.file_path,
-                                'block_number': chunk.block_number,
-                                'version': chunk.version,
-                            }
-                        }
-                        client_socket.send(json.dumps(request_msg).encode('utf-8'))
-
-                    while True:
-                        try:
-                            data = conn.recv(10240).decode()
-                            if not data:
-                                # Connection terminated early
-                                self.success = False
-                                break
-
-                            message = json.loads(data)
-                            print(f"Received: {message}")
-                            self.handle_message(message, conn)
-                        except Exception as e:
-                            print(f"Error: {e}")
-                            self.success = False
-                            break
+            # Import WSGI server (eventlet or threading)
+            import eventlet
+            eventlet.wsgi.server(
+                eventlet.listen((self.host, self.port)), 
+                self.app
+            )
+        except Exception as e:
+            print(f"Server error: {e}")
+            self.success = False
+            self.finalize_transfer()
         finally:
-            # Call the callback with the success status
-            self.callback(self.success)
+            # Ensure callback is called
+            self.finalize_transfer()
