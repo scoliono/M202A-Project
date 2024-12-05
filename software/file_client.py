@@ -1,6 +1,7 @@
 import socket
 import os
 import json
+import base64  # Added for encoding/decoding binary data
 
 # Configuration
 SERVER_HOST = '192.168.4.1'  # IP of the server
@@ -18,8 +19,8 @@ def handle_message(message, conn):
         file_name = message['content']
         file_path = os.path.join(FILE_DIR, file_name)
         if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                file_content = f.read()
+            with open(file_path, 'rb') as f:  # Open in binary mode
+                file_content = base64.b64encode(f.read()).decode('utf-8')  # Encode binary to base64
             response = {
                 'type': 'file',
                 'content': {
@@ -37,9 +38,9 @@ def handle_message(message, conn):
     elif message['type'] == 'file':
         # Handle file reception
         file_name = message['content']['file_name']
-        file_data = message['content']['data']
+        file_data = base64.b64decode(message['content']['data'])  # Decode base64 to binary
         save_path = os.path.join(FILE_DIR, file_name)
-        with open(save_path, 'w') as f:
+        with open(save_path, 'wb') as f:  # Write in binary mode
             f.write(file_data)
         print(f"File '{file_name}' received and saved.")
     elif message['type'] == 'error':
