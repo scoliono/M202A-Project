@@ -4,18 +4,19 @@ import logging
 from bleak import BleakScanner, BleakClient
 from typing import Callable, Dict, List, Optional
 
-from config import UUID, PKG_LIST_R, PKG_MANIFEST_R, PKG_REQUEST_W
+from config import *
 from sync import *
 
 
 class BLEServiceScanner:
-    def __init__(self, packages: Optional[Dict[str, Package]] = {}, on_manifest: Optional[Callable] = None):
+    def __init__(self, manifest: dict, packages: Optional[Dict[str, Package]] = {}, on_manifest: Optional[Callable] = None):
         self.discovered_devices = []
         # Setup logging
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
         self.packages: Dict[str, Package] = packages
         self.peers: Dict[str, List[str]] = {}   # MAC address and what packages each peer has
+        self.manifest = manifest                # Our manifest
         self.on_manifest = on_manifest          # Callback for processing manifest
 
     def detection_callback(self, device, advertisement_data):
@@ -40,9 +41,15 @@ class BLEServiceScanner:
             self.logger.info(f"Reading characteristics for service: {target_service.uuid}")
             
             try:
+                # first, send our manifest (server may want a chunk of ours)
+                our_manifest_str = json.dumps(self.manifest)
+                await client.write_gatt_char(PKG_MANIFEST_W, our_manifest_str.encode('utf-8'))
+                self.logger.info(f"Sent our package manifest")
+
+                # read their manifest
                 pkg_list_raw = await client.read_gatt_char(PKG_LIST_R)
                 pkg_list = json.loads(pkg_list_raw)
-                self.logger.info(f"Got package list: {pkg_list_raw}")
+                self.logger.info(f"Got package manifest: {pkg_list_raw}")
 
                 self.peers[pkg_list["mac"]] = pkg_list["pkgs"]
                 for pkg_name in pkg_list["pkgs"]:
@@ -61,7 +68,7 @@ class BLEServiceScanner:
         else:
             self.logger.warning("Target service not found on device")
 
-    async def scan_and_read(self, scan_duration=5):
+    async def scan_and_read(self, manifest: dict, scan_duration=5):
         """Scan for devices and read characteristics of matching ones"""
         self.logger.info(f"Scanning for devices with service UUID: {UUID}")
         

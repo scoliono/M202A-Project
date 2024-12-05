@@ -7,9 +7,9 @@ from bluez_peripheral.gatt.characteristic import characteristic, CharacteristicF
 from bluez_peripheral.advert import Advertisement
 from bluez_peripheral.agent import NoIoAgent
 from bluez_peripheral.util import get_message_bus, Adapter
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
-from config import UUID, PKG_LIST_R, PKG_MANIFEST_R, PKG_REQUEST_W
+from config import *
 from sync import *
 
 
@@ -24,17 +24,20 @@ def get_wifi_mac_address():
 
 # Define the BLE service
 class FileSharingService(Service):
-    def __init__(self, packages: Optional[Dict[str, Package]] = {}):
+    def __init__(self, hostname: str ,packages: Optional[Dict[str, Package]] = {}, on_manifest: Optional[Callable] = None):
         super().__init__(UUID, True)  # Custom service UUID
+        self.hostname = hostname
         self.client_requests = {}  # Map of client identifiers to requested files
         self.mac_address = get_wifi_mac_address()  # Retrieve Wi-Fi MAC address
         self.packages: Dict[str, Package] = packages
+        self.on_manifest = on_manifest
 
     # Read-only characteristic to advertise the list of packages
     @characteristic(PKG_LIST_R, CharFlags.READ)
     def pkg_list(self, options):
         # Add the MAC address to the pkg list
         pkg_list_with_mac = {
+            "ssid": hostname,
             "mac": self.mac_address,  # Include the MAC address
             "pkgs": list(self.packages.keys())
         }
@@ -58,7 +61,7 @@ class FileSharingService(Service):
 
     # Read-only characteristic to respond with package manifest
     @characteristic(PKG_MANIFEST_R, CharFlags.READ)
-    def pkg_manifest(self, options):
+    def read_pkg_manifest(self, options):
         # Use client-specific identifier from options
         client_id = options.device
 
@@ -73,8 +76,23 @@ class FileSharingService(Service):
         # Return an empty list if no valid request is found
         return bytes(json.dumps([]), "utf-8")
 
+    # Write-only characteristic to supply package manifest
+    @characteristic(PKG_MANIFEST_W, CharFlags.WRITE)
+    def pkg_manifest(self, options):
+        pass  # Placeholder (Python 3.9+ doesn't require this)
 
-async def ble_server(packages = None):
+    # Setter for the package manifest characteristic
+    @pkg_manifest.setter
+    def write_pkg_manifest(self, value, options):
+        try:
+            decoded = value.decode("utf-8")
+            parsed = json.loads(decoded)
+            self.on_manifest(parsed)
+        except Exception as e:
+            print(f'Failed to process manifest: {str(e)}')
+
+
+async def ble_server(packages = None, on_manifest = None):
     """
     Hosts the FileSharingService over Bluetooth LE.
     """
@@ -85,7 +103,7 @@ async def ble_server(packages = None):
     hostname = socket.gethostname()
 
     # Create and register the file-sharing service
-    service = FileSharingService(packages)
+    service = FileSharingService(hostname, packages, on_manifest=on_manifest)
     service_collection = ServiceCollection()
     service_collection.add_service(service)
     await service_collection.register(bus)
