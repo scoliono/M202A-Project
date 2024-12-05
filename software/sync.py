@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Dict, Set, List, Tuple
+import hashlib
+from typing import Dict, Set, List, Optional, Tuple
 from pathlib import Path
 import json
 
@@ -56,23 +57,82 @@ class ChunkVersion:
     file_path: str
 
 class Package:
-    def __init__(self, name: str, version: int):
+    def __init__(self, name: str, version: int, base_path: Optional[str] = None):
+        """
+        Initialize a Package with optional filesystem storage.
+        
+        Args:
+            name (str): Package name
+            version (int): Package version
+            base_path (str, optional): Base directory for storing package files
+        """
         self.name = name
         self.version = version
         self.files: Dict[str, ChunkedFile] = {}
+        
+        # Setup filesystem storage
+        if base_path:
+            self.base_path = Path(base_path)
+            self.base_path.mkdir(parents=True, exist_ok=True)
+            self.chunk_storage = self.base_path / "chunks"
+            self.chunk_storage.mkdir(exist_ok=True)
+            self.manifest_path = self.base_path / "manifest.json"
+        else:
+            self.base_path = None
+            self.chunk_storage = None
+            self.manifest_path = None
     
-    def add_file(self, path: str) -> None:
-        """Add a new chunked file to the package."""
-        if path not in self.files:
-            self.files[path] = ChunkedFile()
-    
-    def write_chunk(self, path: str, block_number: int, data: bytes, version: int = 1) -> bool:
-        """Write a chunk to a specific file in the package."""
-        if path not in self.files:
-            self.add_file(path)
-        if version > self.version:
-            self.version = version
-        return self.files[path].write_block(block_number, data, version)
+    def _generate_chunk_filename(self, file_path: str, block_number: int, version: int) -> str:
+        """
+        Generate a unique filename for a chunk based on its metadata.
+        
+        Args:
+            file_path (str): Original file path
+            block_number (int): Block number
+            version (int): Chunk version
+        
+        Returns:
+            str: Unique filename for the chunk
+        """
+        # Create a hash that includes file path, block number, and version
+        hash_input = f"{file_path}:{block_number}:{version}".encode()
+        file_hash = hashlib.sha256(hash_input).hexdigest()
+        return f"{file_hash}.chunk"
+
+    def load_from_filesystem(self):
+        """
+        Load package state from filesystem.
+        Reads existing manifest and chunk files.
+        """
+        if not self.base_path or not self.manifest_path.exists():
+            return
+        
+        # Load manifest
+        with open(self.manifest_path, 'r') as f:
+            manifest = json.load(f)
+        
+        # Validate manifest package details
+        if manifest['name'] != self.name or manifest['version'] != self.version:
+            raise ValueError("Manifest does not match package details")
+        
+        # Reconstruct files from manifest
+        for file_path, block_versions in manifest['files'].items():
+            chunked_file = ChunkedFile()
+            
+            for block_number_str, version in block_versions.items():
+                block_number = int(block_number_str)
+                
+                # Attempt to load chunk from filesystem
+                chunk_filename = self._generate_chunk_filename(file_path, block_number, version)
+                chunk_path = self.chunk_storage / chunk_filename
+                
+                if chunk_path.exists():
+                    with open(chunk_path, 'rb') as f:
+                        chunk_data = f.read()
+                    
+                    chunked_file.write_block(block_number, chunk_data, version)
+            
+            self.files[file_path] = chunked_file
     
     def read_chunk(self, path: str, block_number: int, version: int = None) -> bytes:
         """Read a chunk from a specific file in the package."""
@@ -80,11 +140,46 @@ class Package:
             return None
         return self.files[path].read_block(block_number, version)
     
-    def get_manifest(self) -> Dict:
+    def write_chunk(self, path: str, block_number: int, data: bytes, version: int = 1) -> bool:
         """
-        Generate a manifest of all files and their chunk versions.
-        Returns a nested dictionary structure suitable for JSON serialization.
+        Write a chunk to a specific file in the package, with optional filesystem storage.
+        
+        Args:
+            path (str): File path
+            block_number (int): Block number
+            data (bytes): Chunk data
+            version (int, optional): Chunk version
+        
+        Returns:
+            bool: True if successful, False otherwise
         """
+        # Ensure file exists in package
+        if path not in self.files:
+            self.files[path] = ChunkedFile()
+        
+        # Write chunk to in-memory file
+        success = self.files[path].write_block(block_number, data, version)
+        
+        # Store chunk in filesystem if base path is set
+        if success and self.chunk_storage:
+            chunk_filename = self._generate_chunk_filename(path, block_number, version)
+            chunk_path = self.chunk_storage / chunk_filename
+            
+            with open(chunk_path, 'wb') as f:
+                f.write(data)
+            
+            # Update manifest
+            self.save_manifest()
+        
+        return success
+    
+    def save_manifest(self):
+        """
+        Save package manifest to filesystem.
+        """
+        if not self.base_path:
+            return
+        
         manifest = {
             "name": self.name,
             "version": self.version,
@@ -93,9 +188,16 @@ class Package:
         
         for path, chunked_file in self.files.items():
             manifest["files"][path] = chunked_file.get_version_map()
-            
-        return manifest
+        
+        with open(self.manifest_path, 'w') as f:
+            json.dump(manifest, f, indent=2)
     
+    @classmethod
+    def load_manifest(cls, path: str) -> Dict:
+        """Load a package manifest from a JSON file."""
+        with open(path, 'r') as f:
+            return json.load(f)
+
     def get_missing_chunks(self, other_manifest: Dict) -> List[ChunkVersion]:
         """
         Compare with another package manifest and return list of chunks
@@ -159,14 +261,3 @@ class Package:
                     data,
                     chunk.version
                 )
-    
-    def save_manifest(self, path: str) -> None:
-        """Save the package manifest to a JSON file."""
-        with open(path, 'w') as f:
-            json.dump(self.get_manifest(), f, indent=2)
-    
-    @classmethod
-    def load_manifest(cls, path: str) -> Dict:
-        """Load a package manifest from a JSON file."""
-        with open(path, 'r') as f:
-            return json.load(f)
