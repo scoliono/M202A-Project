@@ -74,7 +74,7 @@ class FileSharingService(Service):
         return bytes(json.dumps([]), "utf-8")
 
 
-async def server(packages = None):
+async def ble_server(packages = None):
     """
     Hosts the FileSharingService over Bluetooth LE.
     """
@@ -91,7 +91,7 @@ async def server(packages = None):
     await service_collection.register(bus)
 
     # Advertise the file-sharing service using the hostname
-    advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x0000, 0)
+    advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x0000, 5)
     adapter = await Adapter.get_first(bus)
     await advert.register(bus, adapter)
 
@@ -101,8 +101,9 @@ async def server(packages = None):
     print(f"File Sharing Service is running as '{hostname}' and being advertised.")
     print("Use a BLE scanner app to connect and interact with the service.")
 
-    # Keep the asyncio loop running
-    await bus.wait_for_disconnect()
+    # wait 5 seconds before 
+    await asyncio.sleep(5)
+    await agent.unregister(bus)
 
 
 if __name__ == "__main__":
