@@ -5,16 +5,15 @@ import base64  # Added for encoding/decoding binary data
 
 
 class FileTransferServer:
-    def __init__(self, config, diff, callback):
+    def __init__(self, diff, callback):
         """
-        Initialize the server with configuration, diff dictionary, and a callback function.
-        :param config: A dictionary containing HOST, PORT, and FILE_DIR.
+        Initialize the server with diff dictionary, and a callback function.
         :param diff: A dictionary representing the files to process (key: file name, value: file data).
         :param callback: A function to call with success=True/False upon completion or termination.
         """
-        self.host = config.get('HOST', '192.168.4.1')
-        self.port = config.get('PORT', 65432)
-        self.file_dir = config.get('FILE_DIR', './shared_files')
+        self.host = '192.168.4.1'
+        self.port = 65432
+        self.file_dir = './downloads'
         self.diff = diff
         self.callback = callback
         self.success = True  # Will be set to False if the connection terminates early
