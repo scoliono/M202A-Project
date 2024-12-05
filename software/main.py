@@ -65,6 +65,7 @@ async def main():
         else if state == State.WIFI_CLIENT:
             result = subprocess.run(["client_mode.sh"], capture_output=True, text=True)
             ssid = other_name
+            sleep(5)
             connect_to_wifi(ssid, "password")
         
 
