@@ -204,7 +204,7 @@ class FileTransferServer:
                 self.start_inactivity_monitor(client.sid)
             
             # Connect to the server
-            client.connect(f'http://{self.host}:{self.port}')
+            client.connect(f'http://{self.host}:{self.port}', wait_timeout=10)
             
             # Keep the client running
             client.wait()
