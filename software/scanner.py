@@ -31,39 +31,36 @@ class BLEServiceScanner:
         self.logger.info(f"Reading characteristics for service")
         
         try:
-            # first, send our metadata (server may want one of our chunks)
+            # Retrieve all characteristics for the connected client
+            characteristics = await client.get_characteristics()
+
+            # Find the handle for the desired characteristic UUID
+            manifest_write_handle = None
+            for char in characteristics:
+                if char.uuid == PKG_MANIFEST_W:
+                    manifest_write_handle = char.handle
+                    break
+            
+            if not manifest_write_handle:
+                self.logger.error(f"Characteristic with UUID {PKG_MANIFEST_W} not found.")
+                return
+
+            # Prepare data to write
             our_data = {
                 "ssid": self.ssid,
                 "manifest": self.manifest,
             }
             our_data_str = json.dumps(our_data)
-            await client.write_gatt_char(PKG_MANIFEST_W, our_data_str.encode('utf-8'), response=False)
-            self.logger.info(f"Sent our package manifest")
+            
+            # Write to the characteristic using the handle
+            await client.write_gatt_char(manifest_write_handle, our_data_str.encode('utf-8'), response=False)
+            self.logger.info(f"Sent our package manifest using handle {manifest_write_handle}")
 
-            # read their manifest
-            pkg_list_raw = await client.read_gatt_char(PKG_LIST_R)
-            pkg_list = json.loads(pkg_list_raw)
-            self.logger.info(f"Got package manifest: {pkg_list_raw}")
-
-            self.peers[pkg_list["mac"]] = pkg_list["pkgs"]
-            for pkg_name in pkg_list["pkgs"]:
-                await client.write_gatt_char(PKG_REQUEST_W, pkg_name.encode('utf-8'), response=False)
-                pkg_manifest_raw = await client.read_gatt_char(PKG_MANIFEST_R)
-                self.logger.info(f"Got package manifest: {pkg_manifest_raw}")
-                pkg_manifest = json.loads(pkg_manifest_raw)
-
-                if pkg_name not in self.packages:
-                    self.packages[pkg_name] = Package(name, 1)
-
-                # include peer ssid in response, so we can connect to wifi
-                response = {"ssid": pkg_list["ssid"], "manifest": pkg_manifest}
-                self.on_manifest(response)
-
-                # TODO: support multiple pkgs, for now break after the first one
-                break
+            # Proceed to read other characteristics or perform additional tasks
 
         except Exception as e:
-            self.logger.error("Failed to read package list from characteristics:", str(e))
+            self.logger.error(f"Failed to interact with characteristics: {str(e)}")
+
 
     async def scan_and_read(self, manifest: dict, scan_duration=5):
         """Scan for devices and read characteristics of matching ones"""
