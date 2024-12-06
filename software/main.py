@@ -70,7 +70,7 @@ async def main():
         # either function may call `on_manifest_received()` to exit this loop
         while state != State.BT_COMPLETE:
             # hack: BT mode switching wasn't working
-            if int(hostname[-1]) % 2 == 0:
+            if int(hostname[-1]) > 2:
                 state = State.BT_ADVERT
                 await ble_server(packages, on_manifest_received)
             else:
