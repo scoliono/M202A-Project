@@ -198,6 +198,52 @@ class Package:
         with open(path, 'r') as f:
             return json.load(f)
 
+    @classmethod
+    def manifests_differ(cls, manifest1: Dict, manifest2: Dict) -> bool:
+        """
+        Determine if two manifests have any chunk version differences.
+        
+        Args:
+            manifest1 (Dict): First package manifest
+            manifest2 (Dict): Second package manifest
+        
+        Returns:
+            bool: True if manifests have different chunk versions, False if identical
+        """
+        # First, check if package name and version are different
+        if (manifest1.get('name') != manifest2.get('name') or 
+            manifest1.get('version') != manifest2.get('version')):
+            return True
+        
+        # Get files from both manifests
+        files1 = manifest1.get('files', {})
+        files2 = manifest2.get('files', {})
+        
+        # Check for files that exist in one manifest but not the other
+        if set(files1.keys()) != set(files2.keys()):
+            return True
+        
+        # Compare chunk versions for each file
+        for file_path, chunks1 in files1.items():
+            # Ensure the file exists in both manifests
+            if file_path not in files2:
+                return True
+            
+            chunks2 = files2[file_path]
+            
+            # Check if block numbers differ
+            if set(chunks1.keys()) != set(chunks2.keys()):
+                return True
+            
+            # Compare versions for each block
+            for block_number, version1 in chunks1.items():
+                version2 = chunks2.get(block_number)
+                if version1 != version2:
+                    return True
+        
+        # If we've made it this far, manifests are identical
+        return False
+
     def get_missing_chunks(self, other_manifest: Dict) -> List[ChunkVersion]:
         """
         Compare with another package manifest and return list of chunks

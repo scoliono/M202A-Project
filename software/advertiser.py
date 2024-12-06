@@ -24,7 +24,7 @@ def get_wifi_mac_address():
 
 # Define the BLE service
 class FileSharingService(Service):
-    def __init__(self, hostname: str ,packages: Optional[Dict[str, Package]] = {}, on_manifest: Optional[Callable] = None):
+    def __init__(self, hostname: str, packages: Optional[Dict[str, Package]] = {}, on_manifest: Optional[Callable] = None):
         super().__init__(UUID, True)  # Custom service UUID
         self.hostname = hostname
         self.client_requests = {}  # Map of client identifiers to requested files

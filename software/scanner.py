@@ -9,13 +9,14 @@ from sync import *
 
 
 class BLEServiceScanner:
-    def __init__(self, manifest: dict, packages: Optional[Dict[str, Package]] = {}, on_manifest: Optional[Callable] = None):
+    def __init__(self, ssid: str, manifest: dict, packages: Optional[Dict[str, Package]] = {}, on_manifest: Optional[Callable] = None):
         self.discovered_devices = []
         # Setup logging
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
         self.packages: Dict[str, Package] = packages
         self.peers: Dict[str, List[str]] = {}   # MAC address and what packages each peer has
+        self.ssid = ssid                        # hostname for wifi
         self.manifest = manifest                # Our manifest
         self.on_manifest = on_manifest          # Callback for processing manifest
 
@@ -41,9 +42,13 @@ class BLEServiceScanner:
             self.logger.info(f"Reading characteristics for service: {target_service.uuid}")
             
             try:
-                # first, send our manifest (server may want a chunk of ours)
-                our_manifest_str = json.dumps(self.manifest)
-                await client.write_gatt_char(PKG_MANIFEST_W, our_manifest_str.encode('utf-8'))
+                # first, send our metadata (server may want one of our chunks)
+                our_data = {
+                    "ssid": self.ssid,
+                    "manifest": self.manifest,
+                }
+                our_data_str = json.dumps(our_data)
+                await client.write_gatt_char(PKG_MANIFEST_W, our_data_str.encode('utf-8'))
                 self.logger.info(f"Sent our package manifest")
 
                 # read their manifest
@@ -60,7 +65,13 @@ class BLEServiceScanner:
 
                     if pkg_name not in self.packages:
                         self.packages[pkg_name] = Package(name, 1)
-                    self.on_manifest(pkg_manifest)
+
+                    # include peer ssid in response, so we can connect to wifi
+                    response = {"ssid": pkg_list["ssid"], "manifest": pkg_manifest}
+                    self.on_manifest(response)
+
+                    # TODO: support multiple pkgs, for now break after the first one
+                    break
 
             except Exception as e:
                 print("Failed to package list from characteristics", str(e))
