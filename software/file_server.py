@@ -12,6 +12,7 @@ class FileTransferServer:
         :param package: Package object for handling file chunks
         :param callback: Function to call upon completion or termination
         """
+        print("[__init__] Initializing FileTransferServer")
         self.host = '192.168.4.1'
         self.port = 65432
         self.package = package
@@ -26,6 +27,7 @@ class FileTransferServer:
         self.connection_active = False
         
         # Create SocketIO server
+        print("[__init__] Setting up SocketIO server")
         self.sio = socketio.Server()
         self.app = socketio.WSGIApp(self.sio)
         
@@ -36,14 +38,17 @@ class FileTransferServer:
         """
         Set up SocketIO event handlers for different types of messages.
         """
+        print("[setup_event_handlers] Setting up event handlers")
+
         @self.sio.on('connect')
         def on_connect(sid, environ):
-            print(f"Client connected: {sid}")
+            print(f"[on_connect] Client connected: {sid}")
             self.connection_active = True
             self.last_activity_time = time.time()
             
             # If diff is set, start processing chunks after connection
             if hasattr(self, 'diff') and self.diff:
+                print("[on_connect] Processing diff on connection")
                 # Convert diff to set of remaining chunks
                 self.remaining_chunks = set(
                     (chunk.file_path, chunk.block_number, chunk.version) 
@@ -59,6 +64,7 @@ class FileTransferServer:
             """
             Handle file chunk request from client.
             """
+            print(f"[on_request] Received request: {data}")
             # Update last activity time
             self.last_activity_time = time.time()
             
@@ -70,6 +76,7 @@ class FileTransferServer:
             chunk_data = self.package.read_chunk(file_path, block_number, version)
             
             if chunk_data:
+                print(f"[on_request] Sending chunk: {file_path}, block {block_number}, version {version}")
                 response = {
                     'type': 'file',
                     'content': {
@@ -81,6 +88,7 @@ class FileTransferServer:
                 }
                 self.sio.emit('file', response, room=sid)
             else:
+                print(f"[on_request] Chunk not found: {file_path}, block {block_number}")
                 error_response = {
                     'type': 'error',
                     'content': f"Chunk not found: {file_path}, block {block_number}"
@@ -92,6 +100,7 @@ class FileTransferServer:
             """
             Process received file chunk.
             """
+            print(f"[on_file] Received file chunk: {data}")
             # Update last activity time
             self.last_activity_time = time.time()
             
@@ -104,17 +113,17 @@ class FileTransferServer:
             
             # Write chunk to package
             self.package.write_chunk(file_path, block_number, chunk_data, version)
-            print(f"Chunk '{file_path}' received and saved.")
+            print(f"[on_file] Chunk '{file_path}' received and saved.")
             
             # Remove this chunk from remaining chunks
             remaining_key = (file_path, block_number, version)
             if remaining_key in self.remaining_chunks:
                 self.remaining_chunks.remove(remaining_key)
-                print(f"Remaining chunks: {len(self.remaining_chunks)}")
+                print(f"[on_file] Remaining chunks: {len(self.remaining_chunks)}")
 
         @self.sio.on('disconnect')
         def on_disconnect(sid):
-            print(f"Client disconnected: {sid}")
+            print(f"[on_disconnect] Client disconnected: {sid}")
             self.connection_active = False
             self.finalize_transfer()
 
@@ -122,13 +131,15 @@ class FileTransferServer:
         """
         Monitor connection for inactivity and potential closure
         """
+        print("[start_inactivity_monitor] Starting inactivity monitor")
+
         def monitor():
             while self.connection_active:
                 # Check for inactivity
                 current_time = time.time()
                 if (current_time - self.last_activity_time > self.inactivity_timeout and 
                     len(self.remaining_chunks) == 0):
-                    print("Inactivity timeout reached. Closing connection.")
+                    print("[monitor] Inactivity timeout reached. Closing connection.")
                     self.connection_active = False
                     self.sio.disconnect(sid)
                     self.finalize_transfer()
@@ -144,11 +155,12 @@ class FileTransferServer:
         """
         Finalize the transfer and call the callback
         """
+        print("[finalize_transfer] Finalizing transfer")
         # Ensure this is only called once
         if not hasattr(self, '_finalized'):
             self._finalized = True
             self.success = len(self.remaining_chunks) == 0
-            print(f"Transfer {'successful' if self.success else 'failed'}. "
+            print(f"[finalize_transfer] Transfer {'successful' if self.success else 'failed'}. "
                   f"Remaining chunks: {len(self.remaining_chunks)}")
             self.callback(self.success)
 
@@ -156,12 +168,14 @@ class FileTransferServer:
         """
         Process the diff by requesting chunks
         """
+        print("[process_diff] Processing diff")
         if not self.diff:
-            print("No diff to process")
+            print("[process_diff] No diff to process")
             return
 
         # Request out-of-sync chunks
         for chunk in self.diff:
+            print(f"[process_diff] Requesting chunk: {chunk}")
             request_msg = {
                 'type': 'request',
                 'content': {
@@ -177,6 +191,7 @@ class FileTransferServer:
         Start the client and request out-of-sync chunks.
         :param diff: The remaining packages to get
         """
+        print("[start_client] Starting client")
         try:
             # Store diff for later processing
             self.diff = diff
@@ -187,6 +202,7 @@ class FileTransferServer:
             # Set up client-side event handlers
             @client.on('connect')
             def on_connect():
+                print("[start_client.on_connect] Client connected")
                 # Track connection state
                 self.connection_active = True
                 self.last_activity_time = time.time()
@@ -209,7 +225,7 @@ class FileTransferServer:
             # Keep the client running
             client.wait()
         except Exception as e:
-            print(f"Client error: {e}")
+            print(f"[start_client] Client error: {e}")
             self.success = False
             self.finalize_transfer()
         finally:
@@ -221,6 +237,7 @@ class FileTransferServer:
         Start the SocketIO server and listen for connections.
         :param diff: Optional diff to process when a client connects
         """
+        print("[start_server] Starting server")
         try:
             # Store diff for later processing if provided
             if diff:
@@ -233,7 +250,7 @@ class FileTransferServer:
                 self.app
             )
         except Exception as e:
-            print(f"Server error: {e}")
+            print(f"[start_server] Server error: {e}")
             self.success = False
             self.finalize_transfer()
         finally:

@@ -32,11 +32,10 @@ echo "Installing NetworkManager..."
 apt-get update
 apt-get install -y network-manager
 
-# Enable NetworkManager and disable dhcpcd if necessary
+# Enable NetworkManager
 echo "Enabling NetworkManager..."
 systemctl enable NetworkManager
 systemctl start NetworkManager
-systemctl disable dhcpcd
 
 # Install dnsmasq for DHCP server
 echo "Installing dnsmasq..."
