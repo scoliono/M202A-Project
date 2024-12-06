@@ -109,8 +109,11 @@ async def ble_server(packages = None, on_manifest = None):
     service_collection.add_service(service)
     await service_collection.register(bus)
 
+    # how long to spend advertising before scanning
+    timeout = random.randint(10, 20)
+
     # Advertise the file-sharing service using the hostname
-    advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x0000, 5)
+    advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x0000, timeout)
     adapter = await Adapter.get_first(bus)
     await advert.register(bus, adapter)
 
@@ -120,8 +123,6 @@ async def ble_server(packages = None, on_manifest = None):
     print(f"File Sharing Service is running as '{hostname}' and being advertised.")
     print("Use a BLE scanner app to connect and interact with the service.")
 
-    # wait 5 seconds before
-    timeout = random.randint(10, 20)
     await asyncio.sleep(timeout)
     await agent.unregister(bus)
 
