@@ -68,13 +68,16 @@ async def main():
     while True:
         # switch between BT advertising and scanning every 5s
         # either function may call `on_manifest_received()` to exit this loop
-        while state != State.BT_COMPLETE:
+        if int(hostname[-1]) > 2:
+            state = State.BT_ADVERT
+        else:
+            state = State.BT_SCAN
+
+        while state == State.BT_ADVERT or state == State.BT_SCAN:
             # hack: BT mode switching wasn't working
-            if int(hostname[-1]) > 2:
-                state = State.BT_ADVERT
+            if state == State.BT_ADVERT:
                 await ble_server(packages, on_manifest_received)
-            else:
-                state = State.BT_SCAN
+            elif state == State.BT_SCAN:
                 await scanner.scan_and_read(our_manifest)
 
         print('[main] Checking differences between manifests')
