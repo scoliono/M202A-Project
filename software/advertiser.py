@@ -72,7 +72,7 @@ class FileSharingService(Service):
             if requested_pkg in self.packages:
                 pkg = self.packages[requested_pkg]
                 # Return manifest as a JSON list
-                return bytes(json.dumps(pkg.get_manifest()), "utf-8")
+                return bytes(pkg.load_manifest(), "utf-8")
 
         # Return an empty list if no valid request is found
         return bytes(json.dumps([]), "utf-8")
@@ -113,7 +113,7 @@ async def ble_server(packages = None, on_manifest = None):
     timeout = random.randint(15, 25)
 
     # Advertise the file-sharing service using the hostname
-    advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x0000, timeout)
+    advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x00A0, timeout)
     adapter = await Adapter.get_first(bus)
     await advert.register(bus, adapter)
 
