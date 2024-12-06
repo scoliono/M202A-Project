@@ -38,7 +38,7 @@ class FileSharingService(Service):
     def pkg_list(self, options):
         # Add the MAC address to the pkg list
         pkg_list_with_mac = {
-            "ssid": hostname,
+            "ssid": self.hostname,
             "mac": self.mac_address,  # Include the MAC address
             "pkgs": list(self.packages.keys())
         }
@@ -121,7 +121,6 @@ async def ble_server(packages = None, on_manifest = None):
     await agent.register(bus)
 
     print(f"File Sharing Service is running as '{hostname}' and being advertised.")
-    print("Use a BLE scanner app to connect and interact with the service.")
 
     await asyncio.sleep(timeout)
     await agent.unregister(bus)
