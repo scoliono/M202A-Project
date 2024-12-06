@@ -32,7 +32,6 @@ class FileSharingService(Service):
         self.mac_address = get_wifi_mac_address()  # Retrieve Wi-Fi MAC address
         self.packages: Dict[str, Package] = packages
         self.on_manifest = on_manifest
-        self.connected = False
     
     # Read-only characteristic to advertise the list of packages
     @characteristic(PKG_LIST_R, CharFlags.READ)
@@ -123,6 +122,9 @@ async def ble_server(packages = None, on_manifest = None):
 
     print(f"File Sharing Service is running as '{hostname}' and being advertised.")
     print("Use a BLE scanner app to connect and interact with the service.")
+
+    await asyncio.sleep(timeout)
+    await agent.unregister(bus)
 
 
 if __name__ == "__main__":
