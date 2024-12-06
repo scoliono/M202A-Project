@@ -113,7 +113,7 @@ async def ble_server(packages = None, on_manifest = None):
     timeout = random.randint(15, 25)
 
     # Advertise the file-sharing service using the hostname
-    advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x00A0, timeout)
+    advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x0040, timeout)
     adapter = await Adapter.get_first(bus)
     await advert.register(bus, adapter)
 
