@@ -65,7 +65,7 @@ class BLEServiceScanner:
             self.logger.error(f"Failed to interact with characteristics: {str(e)}")
 
 
-    async def scan_and_read(self, manifest: dict, scan_duration=5):
+    async def scan_and_read(self, manifest: dict, scan_duration=15):
         """Scan for devices and read characteristics of matching ones"""
         self.logger.info(f"Scanning for devices with service UUID: {UUID}")
         
