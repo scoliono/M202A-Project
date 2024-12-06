@@ -57,9 +57,10 @@ systemctl restart dnsmasq
 echo "Creating NetworkManager configuration for AP mode..."
 nmcli connection add type wifi ifname wlan0 con-name "AP_Mode" autoconnect no ssid "$AP_SSID"
 nmcli connection modify "AP_Mode" 802-11-wireless.mode ap 802-11-wireless.band bg ipv4.method shared wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$AP_PASSWORD"
-
+nmcli connection modify "AP_Mode" ipv4.addresses 192.168.4.1/24
 # Create scripts for switching between modes
 echo "Creating scripts for switching modes..."
+
 
 # Script to switch to AP mode
 cat > /usr/local/bin/ap_mode.sh <<'EOF'
@@ -68,14 +69,12 @@ echo "Switching to Access Point mode..."
 # Bring down client mode connection if active
 nmcli connection down id "Client_Mode" 2>/dev/null
 # Bring up AP mode connection
+echo "Bringing up AP mode connection..."
 nmcli connection up id "AP_Mode"
-# Assign a static IP address to wlan0
-echo "Assigning static IP 192.168.4.1 to wlan0..."
-sudo ifconfig wlan0 192.168.4.1 netmask 255.255.255.0
-# Start dnsmasq for DHCP
-echo "Starting DHCP server..."
-sudo systemctl start dnsmasq
-echo "Access Point mode enabled with IP 192.168.4.1."
+# Ensure dnsmasq is started for DHCP
+echo "Starting DHCP server with dnsmasq..."
+sudo systemctl restart dnsmasq
+echo "Access Point mode enabled with static IP 192.168.4.1."
 EOF
 
 # Make the script executable
