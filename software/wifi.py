@@ -2,6 +2,9 @@ import dbus
 import time
 
 def connect_to_wifi(ssid: str, password: str):
+    
+
+
     # Connect to NetworkManager's D-Bus service
     bus = dbus.SystemBus()
     nm = bus.get_object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
@@ -25,6 +28,12 @@ def connect_to_wifi(ssid: str, password: str):
     if not wifi_device:
         print("No Wi-Fi device found.")
         return False
+    
+    nm_manager.RequestScan({"type": "wifi"})
+
+    # Wait briefly for the scan to complete
+    time.sleep(5)
+
 
     # Create a new Wi-Fi connection
     wifi_props = dbus.Interface(wifi_device, "org.freedesktop.DBus.Properties")
