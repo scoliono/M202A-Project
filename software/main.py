@@ -71,12 +71,12 @@ async def main():
         if int(hostname[-1]) > 2:
             state = State.BT_ADVERT
             await ble_server(packages, on_manifest_received)
-            while state != BT_COMPLETE:
+            while state != State.BT_COMPLETE:
                 print('[main] Still waiting on package manifest...')
                 await asyncio.sleep(5)
         else:
             state = State.BT_SCAN
-            while state != BT_COMPLETE:
+            while state != State.BT_COMPLETE:
                 await scanner.scan_and_read(our_manifest)
 
         print('[main] Checking differences between manifests')
