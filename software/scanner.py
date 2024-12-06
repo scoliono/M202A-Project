@@ -49,7 +49,7 @@ class BLEServiceScanner:
                         pkg_list_read_handle = char.handle
                     elif char.uuid == PKG_REQUEST_W:
                         pkg_request_write_handle = char.handle
-
+            print(f"[connection_callback] Found handles: {pkg_list_read_handle}, {pkg_request_write_handle}, {pkg_manifest_read_handle}, {pkg_manifest_write_handle}")
             if not manifest_write_handle:
                 self.logger.error(f"Characteristic with UUID {PKG_MANIFEST_W} not found.")
                 return
