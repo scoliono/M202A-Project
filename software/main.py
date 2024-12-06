@@ -24,7 +24,13 @@ async def main():
     # Initialize state of package and chunks
     pkg = Package("my-package", 1, FILE_DIR)
     pkg.load_from_filesystem()
-    our_manifest = pkg.load_manifest(FILE_DIR + "/manifest.json")
+    
+    manifest_path = FILE_DIR + '/manifest.json'
+    if not os.path.exists(manifest_path):
+        with open(manifest_path, 'w') as manifest_file:
+            manifest_file.write('{"name":"my-package","version":1,"files":{}}')
+
+    our_manifest = pkg.load_manifest(manifest_path)
 
     packages = {
         "SamplePackage": pkg
