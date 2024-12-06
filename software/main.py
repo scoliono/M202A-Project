@@ -7,6 +7,7 @@ from enum import IntEnum
 from sync import Package
 from wifi import connect_to_wifi
 import os
+import random
 import socket  # To get the hostname
 import time
 
@@ -70,7 +71,8 @@ async def main():
             state = State.BT_ADVERT
             await ble_server(packages, on_manifest_received)
             state = State.BT_SCAN
-            await scanner.scan_and_read(our_manifest)
+            duration = random.randint(5, 10)
+            await scanner.scan_and_read(our_manifest, scan_duration=duration)
 
         # is there is no difference between manifests?
         if not pkg.manifests_differ(our_manifest, peer_manifest):
