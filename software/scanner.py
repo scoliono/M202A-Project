@@ -37,7 +37,7 @@ class BLEServiceScanner:
                 "manifest": self.manifest,
             }
             our_data_str = json.dumps(our_data)
-            await client.write_gatt_char(PKG_MANIFEST_W, our_data_str.encode('utf-8'))
+            await client.write_gatt_char(PKG_MANIFEST_W, our_data_str.encode('utf-8'), response=False)
             self.logger.info(f"Sent our package manifest")
 
             # read their manifest
@@ -47,7 +47,7 @@ class BLEServiceScanner:
 
             self.peers[pkg_list["mac"]] = pkg_list["pkgs"]
             for pkg_name in pkg_list["pkgs"]:
-                await client.write_gatt_char(PKG_REQUEST_W, pkg_name.encode('utf-8'))
+                await client.write_gatt_char(PKG_REQUEST_W, pkg_name.encode('utf-8'), response=False)
                 pkg_manifest_raw = await client.read_gatt_char(PKG_MANIFEST_R)
                 self.logger.info(f"Got package manifest: {pkg_manifest_raw}")
                 pkg_manifest = json.loads(pkg_manifest_raw)
@@ -63,7 +63,7 @@ class BLEServiceScanner:
                 break
 
         except Exception as e:
-            print("Failed to package list from characteristics", str(e))
+            self.logger.error("Failed to read package list from characteristics:", str(e))
 
     async def scan_and_read(self, manifest: dict, scan_duration=5):
         """Scan for devices and read characteristics of matching ones"""
