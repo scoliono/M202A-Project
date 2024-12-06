@@ -59,7 +59,7 @@ async def main():
         state = State.WIFI_COMPLETE
     
     # BLE + Wi-Fi services
-    scanner = BLEServiceScanner(socket.gethostname(), packages, on_manifest=on_manifest_received)
+    scanner = BLEServiceScanner(socket.gethostname(), our_manifest, packages=packages, on_manifest=on_manifest_received)
 
     # arent these classes basically the same?
     wifi = FileTransferServer(pkg, callback=on_wifi_finished)
