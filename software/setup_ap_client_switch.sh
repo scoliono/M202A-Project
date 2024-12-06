@@ -50,11 +50,17 @@ echo "Creating scripts for switching modes..."
 cat > /usr/local/bin/ap_mode.sh <<'EOF'
 #!/bin/bash
 echo "Switching to Access Point mode..."
+# Bring down client mode connection if active
 nmcli connection down id "Client_Mode" 2>/dev/null
+# Bring up AP mode connection
 nmcli connection up id "AP_Mode"
-echo "Access Point mode enabled."
+# Assign a static IP address to wlan0
+echo "Assigning static IP 192.168.4.1 to wlan0..."
+sudo ifconfig wlan0 192.168.4.1 netmask 255.255.255.0
+echo "Access Point mode enabled with IP 192.168.4.1."
 EOF
 
+# Make the script executable
 chmod +x /usr/local/bin/ap_mode.sh
 
 # Script to switch to Client mode
