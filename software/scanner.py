@@ -95,6 +95,6 @@ class BLEServiceScanner:
             try:
                 self.logger.info(f"Connecting to device: {device.name} ({device.address})")
                 async with BleakClient(device) as client:
-                    await connection_callback(client)                        
+                    await self.connection_callback(client)
             except Exception as e:
                 self.logger.error(f"Error connecting to device: {str(e)}")
