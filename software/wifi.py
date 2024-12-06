@@ -32,7 +32,8 @@ def connect_to_wifi(ssid: str, password: str):
     nm_manager.RequestScan({"type": "wifi"})
 
     # Wait briefly for the scan to complete
-    time.sleep(5)
+    print("[connect_to_wifi] Scanning for Wi-Fi networks...")
+    time.sleep(10)
 
 
     # Create a new Wi-Fi connection
