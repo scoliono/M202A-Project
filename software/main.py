@@ -66,19 +66,23 @@ async def main():
     wifi = FileTransferServer(pkg, callback=on_wifi_finished)
 
     while True:
-        # switch between BT advertising and scanning every 5s
         # either function may call `on_manifest_received()` to exit this loop
-        while state != State.BT_COMPLETE:
-            # hack: BT mode switching wasn't working
-            if int(hostname[-1]) > 2:
-                state = State.BT_ADVERT
-                await ble_server(packages, on_manifest_received)
-            else:
-                state = State.BT_SCAN
+        # hack: BT mode switching wasn't working
+        if int(hostname[-1]) > 2:
+            state = State.BT_ADVERT
+            await ble_server(packages, on_manifest_received)
+            while state != BT_COMPLETE:
+                print('[main] Still waiting on package manifest...')
+                await asyncio.sleep(5)
+        else:
+            state = State.BT_SCAN
+            while state != BT_COMPLETE:
                 await scanner.scan_and_read(our_manifest)
 
+        print('[main] Checking differences between manifests')
         # is there is no difference between manifests?
         if not pkg.manifests_differ(our_manifest, peer_manifest):
+            print('[main] Manifests did not differ; starting over')
             # TODO: temp blacklist this peer
             continue
 
@@ -90,20 +94,26 @@ async def main():
 
         # either start AP/connect to it
         if state == State.WIFI_AP:
+            print('Choosing WiFi AP mode')
             result = subprocess.run(["ap_mode.sh"], capture_output=True, text=True)
         elif state == State.WIFI_CLIENT:
+            print('Choosing WiFi client mode')
             result = subprocess.run(["client_mode.sh"], capture_output=True, text=True)
-            time.sleep(5)
+            await asyncio.sleep(5)
+            print('Connecting to AP')
             connect_to_wifi(peer_manifest["ssid"], "password")
 
         # get differing versions of chunks
+        print('Calculating missing chunks')
         diff = pkg.get_missing_chunks(peer_manifest)
 
         # we know which chunks we need, now do WiFi transfer
         while state != State.WIFI_COMPLETE:
             if state == State.WIFI_AP:
+                print('Starting WiFi transmit - server')
                 wifi.start_server(diff)
             elif state == State.WIFI_CLIENT:
+                print('Starting WiFi transmit - client')
                 wifi.start_client(diff)
 
 if __name__ == "__main__":
