@@ -45,6 +45,7 @@ class FileTransferServer:
             print(f"[on_connect] Client connected: {sid}")
             self.connection_active = True
             self.last_activity_time = time.time()
+            print("[on_connect] Connection state updated")
             
             # If diff is set, start processing chunks after connection
             if hasattr(self, 'diff') and self.diff:
@@ -67,10 +68,12 @@ class FileTransferServer:
             print(f"[on_request] Received request: {data}")
             # Update last activity time
             self.last_activity_time = time.time()
+            print("[on_request] Last activity time updated")
             
             file_path = data['content']['file_path']
             block_number = data['content']['block_number']
             version = data.get('version', 1)
+            print(f"[on_request] Request details - File Path: {file_path}, Block: {block_number}, Version: {version}")
             
             # Read chunk from package
             chunk_data = self.package.read_chunk(file_path, block_number, version)
@@ -103,10 +106,12 @@ class FileTransferServer:
             print(f"[on_file] Received file chunk: {data}")
             # Update last activity time
             self.last_activity_time = time.time()
+            print("[on_file] Last activity time updated")
             
             file_path = data['content']['file_path']
             block_number = data['content']['block_number']
             version = data['content'].get('version', 1)
+            print(f"[on_file] Processing chunk - File Path: {file_path}, Block: {block_number}, Version: {version}")
             
             # Decode base64 chunk data
             chunk_data = base64.b64decode(data['content']['data'])
@@ -129,25 +134,24 @@ class FileTransferServer:
 
     def start_inactivity_monitor(self, sid):
         """
-        Monitor connection for inactivity and potential closure
+        Monitor connection for inactivity and potential closure.
+        If no clients are connected and all chunks are processed, stop the server.
         """
         print("[start_inactivity_monitor] Starting inactivity monitor")
 
         def monitor():
-            while self.connection_active:
+            while True:
                 # Check for inactivity
                 current_time = time.time()
-                if (current_time - self.last_activity_time > self.inactivity_timeout and 
-                    len(self.remaining_chunks) == 0):
-                    print("[monitor] Inactivity timeout reached. Closing connection.")
-                    self.connection_active = False
-                    self.sio.disconnect(sid)
+                if (not self.connection_active and
+                        current_time - self.last_activity_time > self.inactivity_timeout and
+                        len(self.remaining_chunks) == 0):
+                    print("[monitor] No active connections and inactivity timeout reached. Shutting down server.")
                     self.finalize_transfer()
                     break
-                
-                # Check every second
+                print("[monitor] Monitoring activity...")
                 time.sleep(1)
-        
+
         # Start monitoring in a separate thread
         threading.Thread(target=monitor, daemon=True).start()
 
@@ -195,6 +199,7 @@ class FileTransferServer:
         try:
             # Store diff for later processing
             self.diff = diff
+            print("[start_client] Diff stored for processing")
 
             # Connect to server
             client = socketio.Client()
@@ -206,12 +211,14 @@ class FileTransferServer:
                 # Track connection state
                 self.connection_active = True
                 self.last_activity_time = time.time()
+                print("[start_client.on_connect] Connection state updated")
                 
                 # Convert diff to set of remaining chunks
                 self.remaining_chunks = set(
                     (chunk.file_path, chunk.block_number, chunk.version) 
                     for chunk in diff
                 )
+                print(f"[start_client.on_connect] Remaining chunks set: {self.remaining_chunks}")
                 
                 # Process diff after connection
                 self.process_diff(client.sid)
@@ -220,7 +227,8 @@ class FileTransferServer:
                 self.start_inactivity_monitor(client.sid)
             
             # Connect to the server
-            client.connect(f'http://{self.host}:{self.port}', wait_timeout=10)
+            print(f"[start_client] Connecting to server at {self.host}:{self.port}")
+            client.connect(f'http://{self.host}:{self.port}', wait_timeout=15)
             
             # Keep the client running
             client.wait()
@@ -242,9 +250,11 @@ class FileTransferServer:
             # Store diff for later processing if provided
             if diff:
                 self.diff = diff
+                print(f"[start_server] Diff set for processing: {self.diff}")
 
             # Import WSGI server (eventlet or threading)
             import eventlet
+            print(f"[start_server] Hosting server on {self.host}:{self.port}")
             eventlet.wsgi.server(
                 eventlet.listen((self.host, self.port)), 
                 self.app
