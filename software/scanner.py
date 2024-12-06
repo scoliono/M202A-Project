@@ -29,18 +29,21 @@ class BLEServiceScanner:
     async def connection_callback(self, client):
         """Callback for when a device is paired"""
         self.logger.info(f"Reading characteristics for service")
-        
+
         try:
-            # Retrieve all characteristics for the connected client
-            characteristics = await client.get_characteristics()
+            # Retrieve the GATT services
+            services = await client.get_services()
 
             # Find the handle for the desired characteristic UUID
             manifest_write_handle = None
-            for char in characteristics:
-                if char.uuid == PKG_MANIFEST_W:
-                    manifest_write_handle = char.handle
+            for service in services:
+                for char in service.characteristics:
+                    if char.uuid == PKG_MANIFEST_W:
+                        manifest_write_handle = char.handle
+                        break
+                if manifest_write_handle:
                     break
-            
+
             if not manifest_write_handle:
                 self.logger.error(f"Characteristic with UUID {PKG_MANIFEST_W} not found.")
                 return
@@ -51,7 +54,7 @@ class BLEServiceScanner:
                 "manifest": self.manifest,
             }
             our_data_str = json.dumps(our_data)
-            
+
             # Write to the characteristic using the handle
             await client.write_gatt_char(manifest_write_handle, our_data_str.encode('utf-8'), response=False)
             self.logger.info(f"Sent our package manifest using handle {manifest_write_handle}")
