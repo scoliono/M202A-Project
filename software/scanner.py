@@ -52,7 +52,7 @@ class BLEServiceScanner:
                     else:
                         print(f"[char in services] Found characteristic: {char.handle} {char.uuid}")
             print(f"[connection_callback] Found handles: {pkg_list_read_handle}, {pkg_request_write_handle}, {pkg_manifest_read_handle}, {pkg_manifest_write_handle}")
-            if not manifest_write_handle:
+            if not pkg_manifest_write_handle:
                 self.logger.error(f"Characteristic with UUID {PKG_MANIFEST_W} not found.")
                 return
 
@@ -64,8 +64,8 @@ class BLEServiceScanner:
             our_data_str = json.dumps(our_data)
 
             # Write to the characteristic using the handle
-            await client.write_gatt_char(manifest_write_handle, our_data_str.encode('utf-8'), response=False)
-            self.logger.info(f"Sent our package manifest using handle {manifest_write_handle}")
+            await client.write_gatt_char(pkg_manifest_write_handle, our_data_str.encode('utf-8'), response=False)
+            self.logger.info(f"Sent our package manifest using handle {pkg_manifest_write_handle}")
 
 
             # read their manifest
