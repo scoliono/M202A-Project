@@ -69,11 +69,12 @@ class BLEServiceScanner:
             # read their manifest
             pkg_list_raw = await client.read_gatt_char(pkg_list_read_handle)
             pkg_list = json.loads(pkg_list_raw)
-            self.logger.info(f"Got package manifest: {pkg_list_raw}")
+            self.logger.info(f"Got package list: {pkg_list_raw}")
 
             self.peers[pkg_list["mac"]] = pkg_list["pkgs"]
             for pkg_name in pkg_list["pkgs"]:
                 await client.write_gatt_char(pkg_request_write_handle, pkg_name.encode('utf-8'))
+                print(f"[connection_callback] Requested package manifest: {pkg_name}")
                 pkg_manifest_raw = await client.read_gatt_char(pkg_manifest_read_handle)
                 self.logger.info(f"Got package manifest: {pkg_manifest_raw}")
                 pkg_manifest = json.loads(pkg_manifest_raw)
