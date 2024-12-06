@@ -44,14 +44,14 @@ async def main():
     peer_manifest = {}
     peer_ssid = ""
     def on_manifest_received(metadata: dict):
-        global state, peer_manifest
+        nonlocal state, peer_manifest
         state = State.BT_COMPLETE
         peer_manifest = metadata["manifest"]
         peer_ssid = metadata["ssid"]
         print('[main] Got package manifest + SSID')
     
     def on_wifi_finished(success: bool):
-        global state
+        nonlocal state
         if success:
             print('[main] Wifi transferring completed successfully.')
         else:
