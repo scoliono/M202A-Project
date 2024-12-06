@@ -82,7 +82,7 @@ async def main():
             result = subprocess.run(["ap_mode.sh"], capture_output=True, text=True)
         elif state == State.WIFI_CLIENT:
             result = subprocess.run(["client_mode.sh"], capture_output=True, text=True)
-            time.sleep(5)
+            time.sleep(8)
             connect_to_wifi(peer_manifest["ssid"], "password")
 
         # get differing versions of chunks
