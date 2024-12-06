@@ -91,6 +91,7 @@ class BLEServiceScanner:
         
         # Process discovered devices
         for device in self.discovered_devices:
+            self.logger.info(device)
             try:
                 self.logger.info(f"Connecting to device: {device.name} ({device.address})")
                 async with BleakClient(device) as client:
