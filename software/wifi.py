@@ -1,5 +1,6 @@
 import dbus
 import time
+import subprocess
 
 def connect_to_wifi(ssid: str, password: str):
     
@@ -29,11 +30,15 @@ def connect_to_wifi(ssid: str, password: str):
         print("No Wi-Fi device found.")
         return False
     
-    nm_manager.RequestScan({"type": "wifi"})
+    try:
+        subprocess.run(["nmcli", "dev", "wifi", "rescan"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Wi-Fi scan failed: {e}")
+    return False
 
     # Wait briefly for the scan to complete
     print("[connect_to_wifi] Scanning for Wi-Fi networks...")
-    time.sleep(10)
+    time.sleep(8)
 
 
     # Create a new Wi-Fi connection
