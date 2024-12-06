@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to set up Raspberry Pi for switching between AP mode and Client mode using NetworkManager
+# Script to set up Raspberry Pi for switching between AP mode and Client mode using NetworkManager and dnsmasq
 # Usage: sudo ./setup_ap_client_switch.sh <AP_SSID> <AP_PASSWORD>
 
 # Check for root privileges
@@ -38,6 +38,21 @@ systemctl enable NetworkManager
 systemctl start NetworkManager
 systemctl disable dhcpcd
 
+# Install dnsmasq for DHCP server
+echo "Installing dnsmasq..."
+apt-get install -y dnsmasq
+
+# Configure dnsmasq for wlan0
+echo "Configuring dnsmasq..."
+cat > /etc/dnsmasq.conf <<EOF
+interface=wlan0
+dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
+EOF
+
+# Restart dnsmasq to apply changes
+echo "Restarting dnsmasq..."
+systemctl restart dnsmasq
+
 # Create NetworkManager configuration for AP mode
 echo "Creating NetworkManager configuration for AP mode..."
 nmcli connection add type wifi ifname wlan0 con-name "AP_Mode" autoconnect no ssid "$AP_SSID"
@@ -57,6 +72,9 @@ nmcli connection up id "AP_Mode"
 # Assign a static IP address to wlan0
 echo "Assigning static IP 192.168.4.1 to wlan0..."
 sudo ifconfig wlan0 192.168.4.1 netmask 255.255.255.0
+# Start dnsmasq for DHCP
+echo "Starting DHCP server..."
+sudo systemctl start dnsmasq
 echo "Access Point mode enabled with IP 192.168.4.1."
 EOF
 
@@ -67,7 +85,12 @@ chmod +x /usr/local/bin/ap_mode.sh
 cat > /usr/local/bin/client_mode.sh <<'EOF'
 #!/bin/bash
 echo "Switching to Client mode..."
+# Stop dnsmasq
+echo "Stopping DHCP server..."
+sudo systemctl stop dnsmasq
+# Bring down AP mode connection if active
 nmcli connection down id "AP_Mode" 2>/dev/null
+# Bring up client mode connection
 nmcli connection up id "Client_Mode"
 echo "Client mode enabled."
 EOF
