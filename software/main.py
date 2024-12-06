@@ -88,7 +88,7 @@ async def main():
             continue
 
         # simplest way to agree on who is AP/who is client
-        if our_manifest["ssid"] < peer_manifest["ssid"]:
+        if hostname < peer_manifest["ssid"]:
             state = State.WIFI_AP
         else:
             state = State.WIFI_CLIENT
