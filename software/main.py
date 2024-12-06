@@ -88,7 +88,7 @@ async def main():
             continue
 
         # simplest way to agree on who is AP/who is client
-        if hostname < peer_manifest["ssid"]:
+        if hostname < peer_ssid:
             state = State.WIFI_AP
         else:
             state = State.WIFI_CLIENT
@@ -102,7 +102,7 @@ async def main():
             result = subprocess.run(["client_mode.sh"], capture_output=True, text=True)
             await asyncio.sleep(5)
             print('Connecting to AP')
-            connect_to_wifi(peer_manifest["ssid"], "password")
+            connect_to_wifi(peer_ssid, "password")
 
         # get differing versions of chunks
         print('Calculating missing chunks')
