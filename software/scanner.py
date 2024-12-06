@@ -42,9 +42,9 @@ class BLEServiceScanner:
             for service in services:
                 for char in service.characteristics:
                     if char.uuid == PKG_MANIFEST_W:
-                        manifest_write_handle = char.handle
+                        pkg_manifest_write_handle = char.handle
                     elif char.uuid == PKG_MANIFEST_R:
-                        manifest_read_handle = char.handle
+                        pkg_manifest_read_handle = char.handle
                     elif char.uuid == PKG_LIST_R:
                         pkg_list_read_handle = char.handle
                     elif char.uuid == PKG_REQUEST_W:
