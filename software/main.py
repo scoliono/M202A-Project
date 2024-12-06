@@ -71,7 +71,7 @@ async def main():
             state = State.BT_ADVERT
             await ble_server(packages, on_manifest_received)
             state = State.BT_SCAN
-            duration = random.randint(5, 10)
+            duration = random.randint(10, 20)
             await scanner.scan_and_read(our_manifest, scan_duration=duration)
 
         # is there is no difference between manifests?
