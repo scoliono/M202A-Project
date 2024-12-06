@@ -7,6 +7,7 @@ from enum import IntEnum
 from sync import Package
 from wifi import connect_to_wifi
 import os
+import subprocess
 import random
 import socket  # To get the hostname
 import time
@@ -88,6 +89,7 @@ async def main():
             continue
 
         # simplest way to agree on who is AP/who is client
+        print(f'[main] Choosing WiFi mode, my hostname: {hostname}, peer SSID: {peer_ssid}')
         if hostname < peer_ssid:
             state = State.WIFI_AP
         else:
