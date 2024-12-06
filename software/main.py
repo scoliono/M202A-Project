@@ -71,7 +71,8 @@ async def main():
             state = State.BT_ADVERT
             await ble_server(packages, on_manifest_received)
             state = State.BT_SCAN
-            await scanner.scan_and_read(our_manifest, scan_duration=3)
+            scan_duration = random.randint(8, 10)
+            await scanner.scan_and_read(our_manifest, scan_duration=scan_duration)
 
         # is there is no difference between manifests?
         if not pkg.manifests_differ(our_manifest, peer_manifest):
