@@ -59,7 +59,8 @@ async def main():
         state = State.WIFI_COMPLETE
     
     # BLE + Wi-Fi services
-    scanner = BLEServiceScanner(socket.gethostname(), packages, on_manifest=on_manifest_received)
+    hostname = socket.gethostname()
+    scanner = BLEServiceScanner(hostname, our_manifest, packages=packages, on_manifest=on_manifest_received)
 
     # arent these classes basically the same?
     wifi = FileTransferServer(pkg, callback=on_wifi_finished)
@@ -71,7 +72,7 @@ async def main():
             state = State.BT_ADVERT
             await ble_server(packages, on_manifest_received)
             state = State.BT_SCAN
-            scan_duration = random.randint(8, 10)
+            scan_duration = 5 * int(hostname[-1])
             await scanner.scan_and_read(our_manifest, scan_duration=scan_duration)
 
         # is there is no difference between manifests?
