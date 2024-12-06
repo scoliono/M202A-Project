@@ -32,7 +32,7 @@ class BLEServiceScanner:
 
         try:
             # Retrieve the GATT services
-            services = await client.get_services()
+            services = await client.services
 
             # Find the handle for the desired characteristic UUID
             pkg_manifest_write_handle = None
