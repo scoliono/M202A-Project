@@ -66,17 +66,15 @@ async def main():
     wifi = FileTransferServer(pkg, callback=on_wifi_finished)
 
     while True:
+        # switch between BT advertising and scanning every 5s
         # either function may call `on_manifest_received()` to exit this loop
-        # hack: BT mode switching wasn't working
-        if int(hostname[-1]) > 2:
-            state = State.BT_ADVERT
-            await ble_server(packages, on_manifest_received)
-            while state != State.BT_COMPLETE:
-                print('[main] Still waiting on package manifest...')
-                await asyncio.sleep(5)
-        else:
-            state = State.BT_SCAN
-            while state != State.BT_COMPLETE:
+        while state != State.BT_COMPLETE:
+            # hack: BT mode switching wasn't working
+            if int(hostname[-1]) > 2:
+                state = State.BT_ADVERT
+                await ble_server(packages, on_manifest_received)
+            else:
+                state = State.BT_SCAN
                 await scanner.scan_and_read(our_manifest)
 
         print('[main] Checking differences between manifests')
