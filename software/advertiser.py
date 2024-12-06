@@ -1,5 +1,6 @@
 import asyncio
 import json
+import random
 import socket  # To get the hostname
 import netifaces  # For getting MAC address
 from bluez_peripheral.gatt.service import Service, ServiceCollection
@@ -109,7 +110,8 @@ async def ble_server(packages = None, on_manifest = None):
     await service_collection.register(bus)
 
     # Advertise the file-sharing service using the hostname
-    advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x0000, 5)
+    timeout = random.randint(10, 20)
+    advert = Advertisement(f"FileShare-{hostname}", [service._uuid], 0x0000, timeout)
     adapter = await Adapter.get_first(bus)
     await advert.register(bus, adapter)
 
