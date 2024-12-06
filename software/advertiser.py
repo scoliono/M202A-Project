@@ -72,7 +72,7 @@ class FileSharingService(Service):
             if requested_pkg in self.packages:
                 pkg = self.packages[requested_pkg]
                 # Return manifest as a JSON list
-                return bytes(pkg.load_manifest(FILE_DIR + "/manifest.json"), "utf-8")
+                return bytes(json.dumps(pkg.load_manifest(FILE_DIR + "/manifest.json")), "utf-8")
 
         # Return an empty list if no valid request is found
         return bytes(json.dumps([]), "utf-8")
