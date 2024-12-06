@@ -69,11 +69,13 @@ async def main():
         # switch between BT advertising and scanning every 5s
         # either function may call `on_manifest_received()` to exit this loop
         while state != State.BT_COMPLETE:
-            state = State.BT_ADVERT
-            await ble_server(packages, on_manifest_received)
-            state = State.BT_SCAN
-            scan_duration = 5 * int(hostname[-1])
-            await scanner.scan_and_read(our_manifest, scan_duration=scan_duration)
+            # hack: BT mode switching wasn't working
+            if hostname % 2 == 0:
+                state = State.BT_ADVERT
+                await ble_server(packages, on_manifest_received)
+            else:
+                state = State.BT_SCAN
+                await scanner.scan_and_read(our_manifest)
 
         # is there is no difference between manifests?
         if not pkg.manifests_differ(our_manifest, peer_manifest):
