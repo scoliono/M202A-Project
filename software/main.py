@@ -44,7 +44,7 @@ async def main():
     peer_manifest = {}
     peer_ssid = ""
     def on_manifest_received(metadata: dict):
-        nonlocal state, peer_manifest
+        nonlocal state, peer_manifest, peer_ssid
         state = State.BT_COMPLETE
         peer_manifest = metadata["manifest"]
         peer_ssid = metadata["ssid"]
