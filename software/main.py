@@ -7,6 +7,7 @@ from enum import IntEnum
 from sync import Package
 from wifi import connect_to_wifi
 import os
+import subprocess
 import random
 import socket  # To get the hostname
 import time
