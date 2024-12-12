@@ -34,24 +34,10 @@ def connect_to_wifi(ssid: str, password: str):
 
     print("[connect_to_wifi] Rescanning Wi-Fi networks...")
     try:
-        result = subprocess.run(
-            ["nmcli", "dev", "wifi", "rescan"],
-            check=True,
-            text=True,  # Ensures output is captured as a string (Python 3.7+)
-            stdout=subprocess.PIPE,  # Captures standard output
-            stderr=subprocess.PIPE,   # Captures standard error
-            timeout=10
-        )
-        # Print the captured output
-        print("[connect_to_wifi] Command output:")
-        print(result.stdout)
+        subprocess.run(["nmcli", "dev", "wifi", "rescan"], check=True, timeout=10)
+        print("[connect_to_wifi] Wi-Fi scan completed.")
     except subprocess.CalledProcessError as e:
-        print("[connect_to_wifi] Command failed:")
-        print(f"Return code: {e.returncode}")
-        print("Standard output:")
-        print(e.stdout)
-        print("Standard error:")
-        print(e.stderr)
+        print(f"[connect_to_wifi] Wi-Fi scan failed: {e}")
         return False
 
     print("[connect_to_wifi] Proceeding with network setup...")
