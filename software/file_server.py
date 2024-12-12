@@ -27,7 +27,7 @@ class FileTransferServer:
         
         # Create SocketIO server
         print("[__init__] Setting up SocketIO server")
-        self.sio = socketio.Server()
+        self.sio = socketio.Server(always_connect=True)
         self.app = socketio.WSGIApp(self.sio)
         
         # Register server-side event handlers
