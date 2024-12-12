@@ -64,7 +64,7 @@ async def main():
     scanner = BLEServiceScanner(hostname, our_manifest, packages=packages, on_manifest=on_manifest_received)
 
     # arent these classes basically the same?
-    wifi = FileTransferServer(pkg, callback=on_wifi_finished)
+    FileTransfer = FileTransferServer(pkg, callback=on_wifi_finished)
 
     while True:
         # switch between BT advertising and scanning every 5s
@@ -114,10 +114,10 @@ async def main():
         while state != State.WIFI_COMPLETE:
             if state == State.WIFI_AP:
                 print('Starting WiFi transmit - server')
-                FileTransferServer.start_server(diff)
+                FileTransfer.start_server(diff)
             elif state == State.WIFI_CLIENT:
                 print('Starting WiFi transmit - client')
-                FileTransferServer.start_client(diff)
+                FileTransfer.start_client(diff)
 
 if __name__ == "__main__":
     asyncio.run(main())
