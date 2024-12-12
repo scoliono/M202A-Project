@@ -114,10 +114,10 @@ async def main():
         while state != State.WIFI_COMPLETE:
             if state == State.WIFI_AP:
                 print('Starting WiFi transmit - server')
-                wifi.start_server(diff)
+                FileTransferServer.start_server(diff)
             elif state == State.WIFI_CLIENT:
                 print('Starting WiFi transmit - client')
-                wifi.start_client(diff)
+                FileTransferServer.start_client(diff)
 
 if __name__ == "__main__":
     asyncio.run(main())
