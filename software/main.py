@@ -23,52 +23,51 @@ class State(IntEnum):
 
 
 async def main():
-    # Initialize state of package and chunks
-    pkg = Package("my-package", 1, FILE_DIR)
-    pkg.load_from_filesystem()
-    
-    manifest_path = FILE_DIR + '/manifest.json'
-    if not os.path.exists(manifest_path):
-        with open(manifest_path, 'w') as manifest_file:
-            manifest_file.write('{"name":"my-package","version":1,"files":{}}')
-
-    our_manifest = pkg.load_manifest(manifest_path)
-
-    packages = {
-        "SamplePackage": pkg
-    }
-
-    # state machine
-    state = State.STARTUP
-
-    # peer's manifest, in order to compare chunk versions
-    peer_manifest = {}
-    peer_ssid = ""
-    def on_manifest_received(metadata: dict):
-        nonlocal state, peer_manifest, peer_ssid
-        state = State.BT_COMPLETE
-        peer_manifest = metadata["manifest"]
-        peer_ssid = metadata["ssid"]
-        print('[main] Got package manifest + SSID')
-    
-    def on_wifi_finished(success: bool):
-        nonlocal state
-        if success:
-            print('[main] Wifi transferring completed successfully.')
-        else:
-            print('[main] Wifi transfer failed! Going back to BT scan...')
-        state = State.WIFI_COMPLETE
-    
-    # BLE + Wi-Fi services
-    hostname = socket.gethostname()
-    scanner = BLEServiceScanner(hostname, our_manifest, packages=packages, on_manifest=on_manifest_received)
-
-    # arent these classes basically the same?
-    FileTransfer = FileTransferServer(pkg, callback=on_wifi_finished)
-
     while True:
-        # switch between BT advertising and scanning every 5s
-        # either function may call `on_manifest_received()` to exit this loop
+        # Initialize state of package and chunks
+        pkg = Package("my-package", 1, FILE_DIR)
+        pkg.load_from_filesystem()
+        
+        manifest_path = FILE_DIR + '/manifest.json'
+        if not os.path.exists(manifest_path):
+            with open(manifest_path, 'w') as manifest_file:
+                manifest_file.write('{"name":"my-package","version":1,"files":{}}')
+
+        our_manifest = pkg.load_manifest(manifest_path)
+
+        packages = {
+            "SamplePackage": pkg
+        }
+
+        # state machine
+        state = State.STARTUP
+
+        # peer's manifest, in order to compare chunk versions
+        peer_manifest = {}
+        peer_ssid = ""
+        def on_manifest_received(metadata: dict):
+            nonlocal state, peer_manifest, peer_ssid
+            state = State.BT_COMPLETE
+            peer_manifest = metadata["manifest"]
+            peer_ssid = metadata["ssid"]
+            print('[main] Got package manifest + SSID')
+        
+        def on_wifi_finished(success: bool):
+            nonlocal state
+            if success:
+                print('[main] Wifi transferring completed successfully.')
+            else:
+                print('[main] Wifi transfer failed! Going back to BT scan...')
+            state = State.WIFI_COMPLETE
+        
+        # BLE + Wi-Fi services
+        hostname = socket.gethostname()
+        scanner = BLEServiceScanner(hostname, our_manifest, packages=packages, on_manifest=on_manifest_received)
+
+        # arent these classes basically the same?
+        FileTransfer = FileTransferServer(pkg, callback=on_wifi_finished)
+
+        # Determine if we are scanning or advertising (hardcoded fix)
         if int(hostname[-1]) > 2:
             state = State.BT_ADVERT
         else:
@@ -118,6 +117,8 @@ async def main():
             elif state == State.WIFI_CLIENT:
                 print('Starting WiFi transmit - client')
                 FileTransfer.start_client(diff)
+
+    print("All done! Starting over.")
 
 if __name__ == "__main__":
     asyncio.run(main())
