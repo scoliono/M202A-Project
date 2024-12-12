@@ -22,7 +22,7 @@ class FileTransferServer:
         # Tracking variables
         self.remaining_chunks = set()
         self.last_activity_time = None
-        self.inactivity_timeout = 5  # 5 seconds
+        self.inactivity_timeout = 10  # 10 seconds
         self.connection_active = False
         
         # Create SocketIO server
