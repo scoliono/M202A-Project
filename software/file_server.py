@@ -46,6 +46,13 @@ class FileTransferServer:
             self.connection_active = True
             self.last_activity_time = time.time()
             print("[on_connect] Connection state updated")
+
+            # Delay processing diff to wait for client readiness
+            delay = 5  # seconds
+            print(f"[on_connect] Waiting {delay} seconds before processing diff")
+            time.sleep(delay)
+            self.connection_active = True
+            self.last_activity_time = time.time()
             
             # If diff is set, start processing chunks after connection
             if hasattr(self, 'diff') and self.diff:
