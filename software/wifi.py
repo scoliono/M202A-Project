@@ -3,7 +3,7 @@ import time
 import subprocess
 
 def connect_to_wifi(ssid: str, password: str):
-    
+    print(f"[connect_to_wifi] Connecting to Wi-Fi network: {ssid}")
 
 
     # Connect to NetworkManager's D-Bus service
@@ -29,6 +29,8 @@ def connect_to_wifi(ssid: str, password: str):
     if not wifi_device:
         print("No Wi-Fi device found.")
         return False
+    else:
+        print(f"Found Wi-Fi device at: {wifi_device.object_path}")
     
     try:
         subprocess.run(["nmcli", "dev", "wifi", "rescan"], check=True)
