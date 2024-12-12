@@ -4,7 +4,6 @@ import time
 import threading
 from typing import Callable, List
 
-
 class FileTransferServer:
     def __init__(self, package: 'Package', callback: Callable):
         """
@@ -31,14 +30,14 @@ class FileTransferServer:
         self.sio = socketio.Server()
         self.app = socketio.WSGIApp(self.sio)
         
-        # Register event handlers
-        self.setup_event_handlers()
+        # Register server-side event handlers
+        self.setup_server_event_handlers()
 
-    def setup_event_handlers(self):
+    def setup_server_event_handlers(self):
         """
-        Set up SocketIO event handlers for different types of messages.
+        Set up SocketIO event handlers for the server side.
         """
-        print("[setup_event_handlers] Setting up event handlers")
+        print("[setup_server_event_handlers] Setting up server event handlers")
 
         @self.sio.on('connect')
         def on_connect(sid, environ):
@@ -139,6 +138,110 @@ class FileTransferServer:
             self.connection_active = False
             self.finalize_transfer()
 
+def setup_client_event_handlers(self, client):
+    """
+    Set up SocketIO event handlers for the client side.
+    This is similar in spirit to the server handlers, 
+    but uses the 'client' object and defines handlers for server-initiated events.
+    """
+    print("[setup_client_event_handlers] Setting up client event handlers")
+
+    @client.on('connect')
+    def on_connect():
+        print("[client.on_connect] Client connected to server")
+        self.connection_active = True
+        self.last_activity_time = time.time()
+        print("[client.on_connect] Connection state updated")
+
+        # If we have a diff, process it after connection
+        if self.diff:
+            self.remaining_chunks = set(
+                (chunk.file_path, chunk.block_number, chunk.version) 
+                for chunk in self.diff
+            )
+            print(f"[client.on_connect] Remaining chunks set: {self.remaining_chunks}")
+
+            # Request out-of-sync chunks from the server
+            self.process_diff(client.sid)
+
+            # Start inactivity monitor
+            self.start_inactivity_monitor(client.sid)
+
+    @client.on('request')
+    def on_server_request(data):
+        """
+        Handle 'request' event sent by the server.
+        The server is requesting a file chunk from the client.
+        """
+        print("[client.on_server_request] Received request from server:", data)
+        self.last_activity_time = time.time()
+
+        file_path = data['content']['file_path']
+        block_number = data['content']['block_number']
+        version = data['content'].get('version', 1)
+
+        # If the client can provide chunks (assuming `self.package` exists on client)
+        chunk_data = self.package.read_chunk(file_path, block_number, version) if self.package else None
+
+        if chunk_data:
+            print(f"[client.on_server_request] Sending chunk: {file_path}, block {block_number}, version {version}")
+            response = {
+                'type': 'file',
+                'content': {
+                    'file_path': file_path,
+                    'block_number': block_number,
+                    'version': version,
+                    'data': base64.b64encode(chunk_data).decode('utf-8')
+                }
+            }
+            client.emit('file', response)
+        else:
+            print(f"[client.on_server_request] Chunk not found: {file_path}, block {block_number}")
+            error_response = {
+                'type': 'error',
+                'content': f"Chunk not found: {file_path}, block {block_number}"
+            }
+            client.emit('error', error_response)
+
+    @client.on('file')
+    def on_server_file(data):
+        """
+        Handle 'file' event from the server.
+        The server has sent a file chunk to this client.
+        """
+        print("[client.on_server_file] Received file chunk:", data)
+        self.last_activity_time = time.time()
+
+        file_path = data['content']['file_path']
+        block_number = data['content']['block_number']
+        version = data['content'].get('version', 1)
+
+        chunk_data = base64.b64decode(data['content']['data'])
+
+        # If the client also stores chunks (assuming `self.package` is present)
+        self.package.write_chunk(file_path, block_number, chunk_data, version)
+        print(f"[client.on_server_file] Chunk '{file_path}' received and saved.")
+
+        # Remove this chunk from remaining chunks if applicable
+        remaining_key = (file_path, block_number, version)
+        if remaining_key in self.remaining_chunks:
+            self.remaining_chunks.remove(remaining_key)
+            print(f"[client.on_server_file] Remaining chunks: {len(self.remaining_chunks)}")
+
+    @client.on('error')
+    def on_server_error(data):
+        """
+        Handle 'error' event from server.
+        """
+        print("[client.on_server_error] Received error from server:", data)
+
+    @client.on('disconnect')
+    def on_server_disconnect():
+        print("[client.on_server_disconnect] Disconnected from server")
+        self.connection_active = False
+        self.finalize_transfer()
+
+        
     def start_inactivity_monitor(self, sid):
         """
         Monitor connection for inactivity and potential closure.
@@ -213,30 +316,10 @@ class FileTransferServer:
 
             # Connect to server
             client = socketio.Client()
-            
-            # Set up client-side event handlers
-            @client.on('connect')
-            def on_connect():
-                print("[start_client.on_connect] Client connected")
-                # Track connection state
-                self.connection_active = True
-                self.last_activity_time = time.time()
-                print("[start_client.on_connect] Connection state updated")
-                
-                # Convert diff to set of remaining chunks
-                self.remaining_chunks = set(
-                    (chunk.file_path, chunk.block_number, chunk.version) 
-                    for chunk in diff
-                )
-                print(f"[start_client.on_connect] Remaining chunks set: {self.remaining_chunks}")
-                
-                # Process diff after connection
-                self.process_diff(client.sid)
-                
-                # Start inactivity monitor
-                self.start_inactivity_monitor(client.sid)
-            
-            # Connect to the server
+
+            # Set up client event handlers before connecting
+            self.setup_client_event_handlers(client)
+
             print(f"[start_client] Connecting to server at {self.host}:{self.port}")
             client.connect(f'http://{self.host}:{self.port}', wait_timeout=15)
             
