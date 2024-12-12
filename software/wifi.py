@@ -48,8 +48,15 @@ def connect_to_wifi(ssid: str, password: str):
     active_ap = wifi_props.Get("org.freedesktop.NetworkManager.Device.Wireless", "ActiveAccessPoint")
 
     # Disconnect from the current network if already connected
-    if active_ap != "/":
-        nm_manager.DeactivateConnection(active_ap)
+    # Check if a Wi-Fi connection is currently active
+    if active_ap and active_ap != "/":
+        try:
+            nm_manager.DeactivateConnection(active_ap)
+            print("[connect_to_wifi] Deactivated the current active connection.")
+        except dbus.exceptions.DBusException as e:
+            print(f"[connect_to_wifi] Failed to deactivate connection: {e}")
+    else:
+        print("[connect_to_wifi] No active connection to deactivate.")
 
     # Connection settings
     connection = {
