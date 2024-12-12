@@ -148,14 +148,17 @@ class FileTransferServer:
 
         def monitor():
             while True:
-                # Check for inactivity
+                # Check for inactivity or broken connection
                 current_time = time.time()
-                if (not self.connection_active and
-                        current_time - self.last_activity_time > self.inactivity_timeout and
-                        len(self.remaining_chunks) == 0):
-                    print("[monitor] No active connections and inactivity timeout reached. Shutting down server.")
+                if not self.connection_active:
+                    print("[monitor] Connection broken. Shutting down server.")
                     self.finalize_transfer()
                     break
+                elif current_time - self.last_activity_time > self.inactivity_timeout:
+                    print("[monitor] Inactivity timeout reached. Shutting down server.")
+                    self.finalize_transfer()
+                    break
+
                 print("[monitor] Monitoring activity...")
                 time.sleep(1)
 
