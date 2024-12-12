@@ -158,7 +158,7 @@ class FileTransferServer:
                 print(f"[client.on_connect] Remaining chunks set: {self.remaining_chunks}")
 
                 # Request out-of-sync chunks from the server
-                self.process_diff(client.sid)
+                self.process_diff()
 
                 # Start inactivity monitor
                 self.start_inactivity_monitor(client.sid)
@@ -278,26 +278,54 @@ class FileTransferServer:
             self.callback(self.success)
 
     def process_diff(self, sid):
-        """
-        Process the diff by requesting chunks
-        """
-        print("[process_diff] Processing diff")
-        if not self.diff:
-            print("[process_diff] No diff to process")
-            return
+    """
+    Process the diff by requesting chunks
+    """
+    print("[process_diff] Processing diff")
+    if not self.diff:
+        print("[process_diff] No diff to process")
+        return
 
-        # Request out-of-sync chunks
-        for chunk in self.diff:
-            print(f"[process_diff] Requesting chunk: {chunk}")
-            request_msg = {
-                'type': 'request',
-                'content': {
-                    'file_path': chunk.file_path,
-                    'block_number': chunk.block_number,
-                    'version': chunk.version,
-                }
+    # Determine if we are on the server or client
+    on_server = sid is not None
+
+    # Debug: Print whether we're client or server
+    if on_server:
+        print("[process_diff] Running on server side.")
+        # On the server side, we have self.sio.eio.sockets, so we can check if sid is connected
+        if hasattr(self.sio, 'eio') and hasattr(self.sio.eio, 'sockets'):
+            print(f"[Debug - Server] Sockets connected: {list(self.sio.eio.sockets.keys())}")
+            print(f"[Debug - Server] Is sid {sid} connected? {sid in self.sio.eio.sockets}")
+        else:
+            print("[Debug - Server] Unable to verify sid connection state (no eio.sockets).")
+    else:
+        print("[process_diff] Running on client side.")
+        # On the client side, self.sio is typically a client instance
+        print(f"[Debug - Client] Client namespaces: {getattr(self.sio, 'namespaces', 'N/A')}")
+        print(f"[Debug - Client] Client SID: {getattr(self.sio, 'sid', 'N/A')}")
+        print(f"[Debug - Client] Is client connected? {getattr(self.sio, 'connected', 'N/A')}")
+
+    # Request out-of-sync chunks
+    for chunk in self.diff:
+        print(f"[process_diff] Requesting chunk: {chunk}")
+        request_msg = {
+            'type': 'request',
+            'content': {
+                'file_path': chunk.file_path,
+                'block_number': chunk.block_number,
+                'version': chunk.version,
             }
+        }
+
+        # If on server, use room=sid to emit
+        # If on client, just emit directly
+        if on_server:
+            print(f"[Debug - Server] Emitting 'request' to sid {sid}")
             self.sio.emit('request', request_msg, room=sid)
+        else:
+            print("[Debug - Client] Emitting 'request' directly to server (no room)")
+            self.sio.emit('request', request_msg)
+
 
     def start_client(self, diff: List['ChunkVersion']):
         """
