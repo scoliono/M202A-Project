@@ -277,7 +277,7 @@ class FileTransferServer:
                   f"Remaining chunks: {len(self.remaining_chunks)}")
             self.callback(self.success)
 
-    def process_diff(self, sid):
+    def process_diff(self, sid=None):
         """
         Process the diff by requesting chunks
         """

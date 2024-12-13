@@ -5,7 +5,7 @@ from sync import Package
 chunk_size = 4 * 1024 * 1024  # 1 MB
 
 # Create a package with filesystem storage and custom chunk size
-print("Initializing package with 1 MB chunks...")
+print("Initializing package with 4 MB chunks...")
 pkg = Package("my-package", 1, base_path=FILE_DIR)
 print("Package initialized.\n")
 
