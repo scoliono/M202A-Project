@@ -160,7 +160,7 @@ class FileTransferServer:
                 print(f"[client.on_connect] Remaining chunks set: {self.remaining_chunks}")
 
                 # Request out-of-sync chunks from the server
-                self.process_diff()
+                self.process_diff(client=client)
 
                 # Start inactivity monitor
                 self.start_inactivity_monitor(client.sid)
@@ -279,7 +279,7 @@ class FileTransferServer:
                   f"Remaining chunks: {len(self.remaining_chunks)}")
             self.callback(self.success)
 
-    def process_diff(self, sid=None):
+    def process_diff(self, sid=None, client=None):
         """
         Process the diff by requesting chunks
         """
@@ -326,7 +326,7 @@ class FileTransferServer:
                 self.sio.emit('request', request_msg, room=sid)
             else:
                 print("[Debug - Client] Emitting 'request' directly to server (no room)")
-                self.sio.emit('request', request_msg)
+                client.emit('request', request_msg)
 
 
     def start_client(self, diff: List['ChunkVersion']):
