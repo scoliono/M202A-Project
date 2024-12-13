@@ -3,6 +3,11 @@ import base64
 import time
 import threading
 from typing import Callable, List
+import eventlet
+import eventlet.wsgi
+import socketio
+
+eventlet.monkey_patch()
 
 class FileTransferServer:
     def __init__(self, package: 'Package', callback: Callable):
