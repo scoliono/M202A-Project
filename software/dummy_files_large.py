@@ -4,9 +4,9 @@ from sync import Package
 # Create a package with filesystem storage
 pkg = Package("large-package", 1, base_path=FILE_DIR)
 
-# Generate a large file (1 GB)
+# Generate a large file (100 MB)
 file_path = "large_file.bin"
-file_size = 1 * 1024 * 1024 * 1024  # 1 GB in bytes
+file_size = 100 * 1024 * 1024  # 100 MB in bytes
 chunk_size = 2048  # 2 KB chunks (same as ChunkedFile block size)
 
 # Step 1: Create a large file filled with random data
