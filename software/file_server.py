@@ -326,6 +326,8 @@ class FileTransferServer:
             else:
                 print("[Debug - Client] Emitting 'request' directly to server (no room)")
                 client.emit('request', request_msg)
+            # delay 2 seconds between requests
+            time.sleep(2)
 
 
     def start_client(self, diff: List['ChunkVersion']):
