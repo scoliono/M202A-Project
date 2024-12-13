@@ -265,7 +265,7 @@ class FileTransferServer:
         # Start monitoring in a separate thread
         threading.Thread(target=monitor, daemon=True).start()
 
-    def finalize_transfer(self):
+    def finalize_transfer(self, client=None):
         """
         Finalize the transfer and call the callback
         """
@@ -277,6 +277,11 @@ class FileTransferServer:
             print(f"[finalize_transfer] Transfer {'successful' if self.success else 'failed'}. "
                   f"Remaining chunks: {len(self.remaining_chunks)}")
             self.callback(self.success)
+        if client:
+            client.disconnect()
+        else:
+            self.sio.stop()
+        
 
     def process_diff(self, sid=None, client=None):
         """
