@@ -6,9 +6,9 @@ print("Initializing package...")
 pkg = Package("large-package", 1, base_path=FILE_DIR)
 print("Package initialized.\n")
 
-# Generate a large file (100 MB)
+# Generate a large file (50 MB)
 file_path = "large_file.bin"
-file_size = 100 * 1024 * 1024  # 100 MB in bytes
+file_size = 50 * 1024 * 1024  # 50 MB in bytes
 chunk_size = 2048  # 2 KB chunks (same as ChunkedFile block size)
 
 # Step 1: Create a large file filled with random data
