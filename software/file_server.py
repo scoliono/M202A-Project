@@ -207,13 +207,12 @@ class FileTransferServer:
             Handle 'file' event from the server.
             The server has sent a file chunk to this client.
             """
-            print("[client.on_server_file] Received file chunk:", data)
             self.last_activity_time = time.time()
 
             file_path = data['content']['file_path']
             block_number = data['content']['block_number']
             version = data['content'].get('version', 1)
-
+            print(f'[client.on_server_file] Processing chunk - File Path: {file_path}, Block: {block_number}, Version: {version}')
             chunk_data = base64.b64decode(data['content']['data'])
 
             # If the client also stores chunks (assuming `self.package` is present)
