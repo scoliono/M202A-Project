@@ -6,7 +6,7 @@ chunk_size = 1 * 1024 * 1024  # 1 MB
 
 # Create a package with filesystem storage and custom chunk size
 print("Initializing package with 1 MB chunks...")
-pkg = Package("large-package", 1, base_path=FILE_DIR)
+pkg = Package("my-package", 1, base_path=FILE_DIR)
 print("Package initialized.\n")
 
 # Generate a large file (256 MB)
