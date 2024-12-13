@@ -358,7 +358,7 @@ class FileTransferServer:
             print("[start_client] Diff stored for processing")
 
             # Connect to server
-            client = socketio.Client(reconnection=True, max_http_buffer_size=10**8)  # 100 MB
+            client = socketio.Client(reconnection=True)  # 100 MB
 
             # Set up client event handlers before connecting
             self.setup_client_event_handlers(client)
