@@ -27,7 +27,7 @@ class FileTransferServer:
         
         # Create SocketIO server
         print("[__init__] Setting up SocketIO server")
-        self.sio = socketio.Server(always_connect=True)
+        self.sio = socketio.Server(always_connect=True,max_http_buffer_size=10**8)  # 100 MB
         self.app = socketio.WSGIApp(self.sio)
         
         # Register server-side event handlers
@@ -358,13 +358,13 @@ class FileTransferServer:
             print("[start_client] Diff stored for processing")
 
             # Connect to server
-            client = socketio.Client()
+            client = socketio.Client(reconnection=True, max_http_buffer_size=10**8)  # 100 MB
 
             # Set up client event handlers before connecting
             self.setup_client_event_handlers(client)
 
             print(f"[start_client] Connecting to server at {self.host}:{self.port}")
-            client.connect(f'http://{self.host}:{self.port}', wait_timeout=15)
+            client.connect(f'http://{self.host}:{self.port}', wait_timeout=25, transports=['websocket'])
             
             # Keep the client running
             client.wait()
