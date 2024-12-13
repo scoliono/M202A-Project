@@ -108,6 +108,8 @@ async def main():
         # get differing versions of chunks
         print('Calculating missing chunks')
         diff = pkg.get_missing_chunks(peer_manifest)
+        if not diff:
+            print('No missing chunks found')
 
         # we know which chunks we need, now do WiFi transfer
         while state != State.WIFI_COMPLETE:

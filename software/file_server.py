@@ -61,6 +61,8 @@ class FileTransferServer:
                 
                 # Start inactivity timeout thread
                 self.start_inactivity_monitor(sid)
+            else :
+                print("[on_connect] No diff to process")
 
         @self.sio.on('request')
         def on_request(sid, data):
@@ -368,6 +370,8 @@ class FileTransferServer:
             if diff:
                 self.diff = diff
                 print(f"[start_server] Diff set for processing: {self.diff}")
+            else:
+                print("[start_server] No diff provided for processing")
 
             # Import WSGI server (eventlet or threading)
             import eventlet
@@ -382,4 +386,5 @@ class FileTransferServer:
             self.finalize_transfer()
         finally:
             # Ensure callback is called
+            print("[start_server] Finalizing transfer")
             self.finalize_transfer()
