@@ -2,7 +2,7 @@ from config import FILE_DIR
 from sync import Package
 
 # Set chunk size to 1 MB (1048576 bytes)
-chunk_size = 1 * 1024 * 1024  # 1 MB
+chunk_size = 4 * 1024 * 1024  # 1 MB
 
 # Create a package with filesystem storage and custom chunk size
 print("Initializing package with 1 MB chunks...")
@@ -11,7 +11,7 @@ print("Package initialized.\n")
 
 # Generate a large file (256 MB)
 file_path = "large_file.bin"
-file_size = 256 * 1024 * 1024  # 256 MB in bytes
+file_size = 128 * 1024 * 1024  # 256 MB in bytes
 
 # Step 1: Create a large file filled with random data
 print(f"Creating a {file_size // (1024 * 1024)} MB file...")

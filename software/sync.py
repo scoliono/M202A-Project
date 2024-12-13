@@ -5,7 +5,7 @@ from pathlib import Path
 import json
 
 class ChunkedFile:
-    def __init__(self, block_size=1048576):  # 1 MB default block size
+    def __init__(self, block_size=1048576 * 4):  # 4 MB default block size
         self.block_size = block_size
         self.blocks = {}  # Dictionary to store blocks with their version history
         self.total_blocks = 0
