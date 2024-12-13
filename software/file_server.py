@@ -236,7 +236,7 @@ class FileTransferServer:
         def on_server_disconnect():
             print("[client.on_server_disconnect] Disconnected from server")
             self.connection_active = False
-            self.finalize_transfer()
+            self.finalize_transfer(client)
 
 
     def start_inactivity_monitor(self, sid):
@@ -267,7 +267,7 @@ class FileTransferServer:
 
     def finalize_transfer(self, client=None):
         """
-        Finalize the transfer and call the callback
+        Finalize the transfer, stop the server if running, and call the callback.
         """
         print("[finalize_transfer] Finalizing transfer")
         # Ensure this is only called once
@@ -275,12 +275,23 @@ class FileTransferServer:
             self._finalized = True
             self.success = len(self.remaining_chunks) == 0
             print(f"[finalize_transfer] Transfer {'successful' if self.success else 'failed'}. "
-                  f"Remaining chunks: {len(self.remaining_chunks)}")
+                f"Remaining chunks: {len(self.remaining_chunks)}")
             self.callback(self.success)
+
         if client:
+            print("[finalize_transfer] Disconnecting client")
             client.disconnect()
         else:
-            self.sio.stop()
+            print("[finalize_transfer] Stopping the server")
+            # Stop the server by closing the listener socket
+            if hasattr(self, '_server_socket') and self._server_socket:
+                self._server_socket.close()
+                print("[finalize_transfer] Server socket closed")
+            if hasattr(self, '_server_thread') and self._server_thread.is_alive():
+                self._server_thread.join()
+                print("[finalize_transfer] Server thread stopped")
+
+            
         
 
     def process_diff(self, sid=None, client=None):
@@ -381,11 +392,17 @@ class FileTransferServer:
 
             # Import WSGI server (eventlet or threading)
             import eventlet
+            # Create a listener socket and save it for stopping the server
+            self._server_socket = eventlet.listen((self.host, self.port))
             print(f"[start_server] Hosting server on {self.host}:{self.port}")
-            eventlet.wsgi.server(
-                eventlet.listen((self.host, self.port)), 
-                self.app
+
+            # Run the server in a separate thread
+            self._server_thread = threading.Thread(
+                target=eventlet.wsgi.server,
+                args=(self._server_socket, self.app),
+                daemon=True
             )
+            self._server_thread.start()
         except Exception as e:
             print(f"[start_server] Server error: {e}")
             self.success = False
