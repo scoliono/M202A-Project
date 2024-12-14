@@ -91,7 +91,7 @@ We had to devise a way to bundle files along with their metadata in order to kee
 
 **Chunks** are slices of binary data from each file, nominally sized at 2 KB each, and are referred to by their *index* (position in the file) and *version*. Every chunk does exist as a concrete file, named deterministically by taking the SHA-256 digest of the string `"path:chunkId:chunkVersion"` (of course, replacing these words with their actual values, i.e. `"/src/readme.txt:0:1"`). This way, multiple versions of chunks can be cached, in the event that the latest version of a file is not yet ready to be reconstructed. Chunks are the smallest unit of data that gets synced between devices.
 
-![Diagram of Package system](./AdHocPackage.drawio.png)
+![Diagram of Package system](/M202A-Project/AdHocPackage.drawio.png)
 
 The Package interface was designed in such a way that all filesystem operations were abstracted away. From the calling code's point of view, it is only concerned with writing arbitrary binary chunks to virtual file paths.
 
@@ -101,7 +101,7 @@ We decided to abandon Wi-Fi Direct from our project proposal in favor of Wi-Fi A
 
 Shown below is a snippet of the `setup_ap_client_switch.sh` script.
 
-![Snippet of Network Setup Script](./NetworkScript.png)
+![Snippet of Network Setup Script](/M202A-Project/NetworkScript.png)
 
 
 ## Syncing Algorithm
@@ -116,7 +116,7 @@ Additionally, we realized that we had not planned on using any specific applicat
 
 A flowchart detailing the full algorithm is shown below.
 
-![Flowchart of Syncing Algorithm](./AdHocFlow.drawio.png)
+![Flowchart of Syncing Algorithm](/M202A-Project/AdHocFlow.drawio.png)
 
 
 ## Communication Conventions
@@ -129,7 +129,7 @@ In the Socket.IO diagram, the messages shown are actually sent as JSON objects. 
 
 Finally, rather than using a handshake-type process to formalize the end of a file transfer, we set a 15-second timeout on both sides. We anticipate sudden connection loss before completion anyway due to the mobile nature of this project.
 
-![Communication Diagrams between Peers](./AdHocComms.drawio.png)
+![Communication Diagrams between Peers](/M202A-Project/AdHocComms.drawio.png)
 
 
 # 4. Evaluation and Results
