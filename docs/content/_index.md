@@ -7,7 +7,7 @@ type: docs
 
 # Abstract
 
-Provide a brief overview of the project objhectives, approach, and results.
+We propose a method of wireless, peer-to-peer chunked file transfers between nearby embedded devices using a combination of Bluetooth Low Energy and temporary Wi-Fi Access Points. This would be useful for mass dissemination of content updates in environments without an Internet connection, in contrast to current methods such as CDNs and BitTorrent. Our decentralized system exchanges device and file state metadata through Bluetooth LE advertisements for lower power consumption, and switches to Wi-Fi afterwards for its faster file transfer speeds. We were able to demonstrate a successful proof of concept, with file transfer speeds of about 2.5 MB/s at close range and moderate power consumption, but we faced reliability issues during the Bluetooth LE pairing phase.
 
 # Team
 
