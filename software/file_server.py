@@ -3,6 +3,11 @@ import base64
 import time
 import threading
 from typing import Callable, List
+import eventlet
+import eventlet.wsgi
+import socketio
+
+eventlet.monkey_patch()
 
 class FileTransferServer:
     def __init__(self, package: 'Package', callback: Callable):
@@ -27,7 +32,7 @@ class FileTransferServer:
         
         # Create SocketIO server
         print("[__init__] Setting up SocketIO server")
-        self.sio = socketio.Server(always_connect=True)
+        self.sio = socketio.Server(always_connect=True,max_http_buffer_size=10**8)  # 100 MB
         self.app = socketio.WSGIApp(self.sio)
         
         # Register server-side event handlers
@@ -61,6 +66,8 @@ class FileTransferServer:
                 
                 # Start inactivity timeout thread
                 self.start_inactivity_monitor(sid)
+            else :
+                print("[on_connect] No diff to process")
 
         @self.sio.on('request')
         def on_request(sid, data):
@@ -158,7 +165,7 @@ class FileTransferServer:
                 print(f"[client.on_connect] Remaining chunks set: {self.remaining_chunks}")
 
                 # Request out-of-sync chunks from the server
-                self.process_diff()
+                self.process_diff(client=client)
 
                 # Start inactivity monitor
                 self.start_inactivity_monitor(client.sid)
@@ -205,13 +212,12 @@ class FileTransferServer:
             Handle 'file' event from the server.
             The server has sent a file chunk to this client.
             """
-            print("[client.on_server_file] Received file chunk:", data)
             self.last_activity_time = time.time()
 
             file_path = data['content']['file_path']
             block_number = data['content']['block_number']
             version = data['content'].get('version', 1)
-
+            print(f'[client.on_server_file] Processing chunk - File Path: {file_path}, Block: {block_number}, Version: {version}')
             chunk_data = base64.b64decode(data['content']['data'])
 
             # If the client also stores chunks (assuming `self.package` is present)
@@ -235,7 +241,7 @@ class FileTransferServer:
         def on_server_disconnect():
             print("[client.on_server_disconnect] Disconnected from server")
             self.connection_active = False
-            self.finalize_transfer()
+            self.finalize_transfer(client)
 
 
     def start_inactivity_monitor(self, sid):
@@ -264,9 +270,9 @@ class FileTransferServer:
         # Start monitoring in a separate thread
         threading.Thread(target=monitor, daemon=True).start()
 
-    def finalize_transfer(self):
+    def finalize_transfer(self, client=None):
         """
-        Finalize the transfer and call the callback
+        Finalize the transfer, stop the server if running, and call the callback.
         """
         print("[finalize_transfer] Finalizing transfer")
         # Ensure this is only called once
@@ -274,10 +280,26 @@ class FileTransferServer:
             self._finalized = True
             self.success = len(self.remaining_chunks) == 0
             print(f"[finalize_transfer] Transfer {'successful' if self.success else 'failed'}. "
-                  f"Remaining chunks: {len(self.remaining_chunks)}")
+                f"Remaining chunks: {len(self.remaining_chunks)}")
             self.callback(self.success)
 
-    def process_diff(self, sid):
+        if client:
+            print("[finalize_transfer] Disconnecting client")
+            client.disconnect()
+        else:
+            print("[finalize_transfer] Stopping the server")
+            # Stop the server by closing the listener socket
+            if hasattr(self, '_server_socket') and self._server_socket:
+                self._server_socket.close()
+                print("[finalize_transfer] Server socket closed")
+            if hasattr(self, '_server_thread') and self._server_thread.is_alive():
+                self._server_thread.join()
+                print("[finalize_transfer] Server thread stopped")
+
+            
+        
+
+    def process_diff(self, sid=None, client=None):
         """
         Process the diff by requesting chunks
         """
@@ -324,7 +346,9 @@ class FileTransferServer:
                 self.sio.emit('request', request_msg, room=sid)
             else:
                 print("[Debug - Client] Emitting 'request' directly to server (no room)")
-                self.sio.emit('request', request_msg)
+                client.emit('request', request_msg)
+            # delay 2 seconds between requests
+            time.sleep(2)
 
 
     def start_client(self, diff: List['ChunkVersion']):
@@ -339,13 +363,13 @@ class FileTransferServer:
             print("[start_client] Diff stored for processing")
 
             # Connect to server
-            client = socketio.Client()
+            client = socketio.Client(reconnection=True)  # 100 MB
 
             # Set up client event handlers before connecting
             self.setup_client_event_handlers(client)
 
             print(f"[start_client] Connecting to server at {self.host}:{self.port}")
-            client.connect(f'http://{self.host}:{self.port}', wait_timeout=15)
+            client.connect(f'http://{self.host}:{self.port}', wait_timeout=25, transports=['websocket'])
             
             # Keep the client running
             client.wait()
@@ -368,18 +392,27 @@ class FileTransferServer:
             if diff:
                 self.diff = diff
                 print(f"[start_server] Diff set for processing: {self.diff}")
+            else:
+                print("[start_server] No diff provided for processing")
 
             # Import WSGI server (eventlet or threading)
             import eventlet
+            # Create a listener socket and save it for stopping the server
+            self._server_socket = eventlet.listen((self.host, self.port))
             print(f"[start_server] Hosting server on {self.host}:{self.port}")
-            eventlet.wsgi.server(
-                eventlet.listen((self.host, self.port)), 
-                self.app
+
+            # Run the server in a separate thread
+            self._server_thread = threading.Thread(
+                target=eventlet.wsgi.server,
+                args=(self._server_socket, self.app),
+                daemon=True
             )
+            self._server_thread.start()
         except Exception as e:
             print(f"[start_server] Server error: {e}")
             self.success = False
             self.finalize_transfer()
         finally:
             # Ensure callback is called
+            print("[start_server] Finalizing transfer")
             self.finalize_transfer()
